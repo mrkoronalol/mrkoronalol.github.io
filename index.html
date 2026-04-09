@@ -3,154 +3,696 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Календарь — Апрель 2026</title>
+<title>Календарь сотрудника — Лемана ПРО</title>
+
+<!-- html2canvas + jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+* {
+    box-sizing: border-box;
+}
 body {
-    font-family: Arial, sans-serif;
-    background: #f5f7fa;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #eef2f9;
     margin: 0;
-    padding: 20px;
+    padding: 24px 20px;
 }
 
 .container {
-    max-width: 1100px;
-    margin: auto;
+    max-width: 1300px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 32px;
+    box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+    padding: 20px 24px 32px 24px;
+    transition: all 0.2s;
 }
 
+/* шапка + управление */
+.header-flex {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 15px;
+}
 h1 {
-    text-align: center;
-    margin-bottom: 20px;
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin: 0;
+    background: linear-gradient(135deg, #1e293b, #2d3a4e);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    letter-spacing: -0.3px;
 }
-
+.month-nav {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 6px 16px;
+    border-radius: 60px;
+}
+.month-nav button {
+    background: white;
+    border: none;
+    font-size: 1.3rem;
+    font-weight: bold;
+    width: 36px;
+    height: 36px;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.month-nav button:hover {
+    background: #cbd5e1;
+    transform: scale(0.96);
+}
+.month-nav span {
+    font-weight: 600;
+    font-size: 1.2rem;
+    min-width: 140px;
+    text-align: center;
+    color: #0f172a;
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 18px 0 22px 0;
+    align-items: center;
+    justify-content: space-between;
+}
+.btn-group {
+    display: flex;
+    gap: 12px;
+}
+button {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #1e293b;
+    color: white;
+    transition: 0.2s;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+button i { font-style: normal; font-weight: normal; }
+button:hover {
+    background: #0f172a;
+    transform: translateY(-1px);
+}
+.btn-import {
+    background: #2b6e4f;
+}
+.btn-import:hover {
+    background: #1e5940;
+}
+.import-area {
+    background: #f8fafc;
+    border-radius: 24px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.import-area textarea {
+    flex: 1;
+    border-radius: 20px;
+    border: 1px solid #cbd5e1;
+    padding: 12px 16px;
+    font-family: monospace;
+    font-size: 13px;
+    background: white;
+    resize: vertical;
+}
+/* календарная сетка */
 .calendar {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+    gap: 12px;
+    margin-top: 12px;
 }
-
+.weekday-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 700;
+    color: #334155;
+    background: #f1f5f9;
+    padding: 12px 0;
+    border-radius: 28px;
+}
+.weekday-header span {
+    font-size: 0.9rem;
+}
 .day {
-    padding: 10px;
-    border-radius: 12px;
-    min-height: 100px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-size: 14px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 12px 8px;
+    border-radius: 20px;
+    min-height: 118px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    background: #ffffff;
+    border: 1px solid #e9edf2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-
+.day:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -8px rgba(0,0,0,0.2);
+    border-color: #b9c7da;
+}
 .date {
-    font-weight: bold;
-    font-size: 16px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 2px 10px;
+    border-radius: 40px;
 }
-
-.work {
-    background: #3b82f6;
+.work { background: linear-gradient(145deg, #d9e9ff, #ecf5ff); border-left: 5px solid #3b82f6; }
+.off { background: #fef9e3; border-left: 5px solid #fbbf24; }
+.vacation { background: #e0f2e9; border-left: 5px solid #2ecc71; }
+.today .date {
+    background: #f59e0b;
     color: white;
+    box-shadow: 0 2px 6px rgba(245,158,11,0.4);
 }
-
-.off {
-    background: #e5e7eb;
+.day-text {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin-top: 6px;
+    word-break: break-word;
+    line-height: 1.35;
 }
-
-.vacation {
-    background: #86efac;
-}
-
-.legend {
-    margin-top: 30px;
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.legend div {
-    display: flex;
+/* popup модалка */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
 }
-
-.box {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-}
-
-.summary {
-    margin-top: 20px;
-    padding: 15px;
+.modal-content {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 24px;
+    border-radius: 32px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 25px 40px rgba(0,0,0,0.2);
 }
-
-@media (max-width: 768px) {
-    .calendar {
-        grid-template-columns: repeat(2, 1fr);
-    }
+.modal-content h3 {
+    margin-top: 0;
+    font-size: 1.5rem;
+}
+.modal-content select, .modal-content input {
+    width: 100%;
+    padding: 10px 14px;
+    margin: 12px 0;
+    border-radius: 60px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+}
+.modal-content button {
+    background: #0f172a;
+    margin-top: 10px;
+    width: auto;
+    padding: 8px 20px;
+}
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+.info-row {
+    font-size: 0.85rem;
+    color: #2c3e66;
+    margin: 8px 0;
+}
+hr {
+    margin: 12px 0;
 }
 </style>
 </head>
-
 <body>
 
-<div class="container">
+<div class="container" id="capture">
+    <div class="header-flex">
+        <h1>📅 Рабочий календарь</h1>
+        <div class="month-nav">
+            <button id="prevMonthBtn">←</button>
+            <span id="monthYearLabel">Апрель 2026</span>
+            <button id="nextMonthBtn">→</button>
+        </div>
+    </div>
+    
+    <div class="actions">
+        <div class="btn-group">
+            <button onclick="exportPNG()">📸 PNG</button>
+            <button onclick="exportPDF()">📄 PDF</button>
+            <button id="showImportBtn" class="btn-import">📥 Вставить расписание</button>
+        </div>
+        <div class="btn-group">
+            <button id="resetToDefaultBtn">⟳ Сбросить (апрель)</button>
+        </div>
+    </div>
 
-<h1>Апрель 2026</h1>
+    <div id="importPanel" class="import-area">
+        <textarea id="scheduleRawText" rows="3" placeholder="Вставьте расписание как в примере:
+01.04.2026
+02:00 - 08:00
+6
+Лемана ПРО_B2C_голос_вход
+02.04.2026
+Выходной
+Лемана ПРО_B2C_голос_вход
+..."></textarea>
+        <button id="applyImportBtn" style="background:#2b6e4f;">📌 Применить</button>
+        <button id="closeImportBtn" style="background:#94a3b8;">✖</button>
+    </div>
 
-<div class="calendar">
+    <div class="weekday-header">
+        <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span>
+    </div>
+    <div class="calendar" id="calendar"></div>
+</div>
 
-<!-- Дни -->
+<!-- модальное окно редактирования -->
+<div class="modal" id="editModal">
+    <div class="modal-content" id="editModalContent"></div>
+</div>
+
 <script>
-const data = {
-    1:"work",2:"work",3:"work",4:"off",5:"work",6:"work",
-    7:"off",8:"off",9:"off",10:"off",11:"work",12:"off",
-    13:"work",14:"work",15:"work",16:"off",17:"work",18:"work",
-    19:"off",20:"off",21:"work",22:"work",23:"off",24:"off",
-    25:"work",26:"work",27:"vacation",28:"vacation",29:"vacation",30:"vacation"
+// ---------- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ----------
+let currentYear = 2026;
+let currentMonth = 3;     // 0-янв, 3 = апрель
+let scheduleData = {};     // структура: { "2026-4-1": { type, shiftText, project } ... }
+let defaultAprilData = null;
+
+// проект по умолчанию
+const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
+
+// ------ вспомогательные функции ------
+function getDateKey(year, month, day) {
+    return `${year}-${month + 1}-${day}`;
+}
+
+// установить день
+function setDayData(year, month, day, type, shiftText, project) {
+    const key = getDateKey(year, month, day);
+    scheduleData[key] = { type, shiftText, project: project || DEFAULT_PROJECT };
+}
+
+// получить данные дня
+function getDayData(year, month, day) {
+    const key = getDateKey(year, month, day);
+    return scheduleData[key] || null;
+}
+
+// отрисовка календаря (поддержка любого месяца)
+function renderCalendar() {
+    const calendarDiv = document.getElementById("calendar");
+    calendarDiv.innerHTML = "";
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+    const startWeekday = firstDayOfMonth.getDay(); // 0 вс, нам нужно пн первым => корректировка
+    let startOffset = (startWeekday === 0 ? 6 : startWeekday - 1);
+    
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const todayDate = new Date();
+    const isCurrentMonthView = (todayDate.getFullYear() === currentYear && todayDate.getMonth() === currentMonth);
+    
+    for (let i = 0; i < startOffset; i++) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.className = "day";
+        emptyDiv.style.background = "#fafcff";
+        emptyDiv.style.opacity = "0.4";
+        emptyDiv.style.cursor = "default";
+        emptyDiv.innerHTML = `<div class="date" style="background:transparent"></div>`;
+        calendarDiv.appendChild(emptyDiv);
+    }
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dayData = getDayData(currentYear, currentMonth, d);
+        let type = dayData ? dayData.type : "work";
+        let shiftDisplay = "";
+        if (type === "work") shiftDisplay = dayData?.shiftText || "02:00–08:00";
+        else if (type === "off") shiftDisplay = "Выходной";
+        else if (type === "vacation") shiftDisplay = "Отпуск";
+        
+        // доп текст: проект или время
+        let extraInfo = "";
+        if (type === "work" && shiftDisplay) extraInfo = `⚡ ${shiftDisplay}`;
+        else if (type === "off") extraInfo = "🌿 Выходной";
+        else if (type === "vacation") extraInfo = "🏖️ Отпуск";
+        
+        if (type === "work" && dayData?.project) extraInfo += ` · ${dayData.project.substring(0, 20)}`;
+        else if ((type === "off" || type === "vacation") && dayData?.project) extraInfo += ` · ${dayData.project.substring(0, 20)}`;
+        
+        const div = document.createElement("div");
+        div.className = `day ${type}`;
+        if (isCurrentMonthView && todayDate.getDate() === d) {
+            div.classList.add("today");
+        }
+        div.innerHTML = `
+            <div class="date">${d}</div>
+            <div class="day-text">${extraInfo || (type === "work" ? "Рабочий день" : (type === "off" ? "Выходной" : "Отпуск"))}</div>
+        `;
+        div.onclick = (function(dayNum) {
+            return function() { openEditModal(dayNum); };
+        })(d);
+        calendarDiv.appendChild(div);
+    }
+    
+    const totalCells = startOffset + daysInMonth;
+    const remaining = (7 - (totalCells % 7)) % 7;
+    for (let i = 0; i < remaining; i++) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.className = "day";
+        emptyDiv.style.background = "#fafcff";
+        emptyDiv.style.opacity = "0.4";
+        emptyDiv.style.cursor = "default";
+        emptyDiv.innerHTML = `<div class="date" style="background:transparent"></div>`;
+        calendarDiv.appendChild(emptyDiv);
+    }
+    
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    document.getElementById("monthYearLabel").innerHTML = `${monthNames[currentMonth]} ${currentYear}`;
+}
+
+// Модалка редактирования
+function openEditModal(day) {
+    const existing = getDayData(currentYear, currentMonth, day);
+    let currentType = existing ? existing.type : "work";
+    let currentShift = existing && existing.shiftText ? existing.shiftText : "02:00–08:00";
+    let currentProject = existing && existing.project ? existing.project : DEFAULT_PROJECT;
+    
+    const modal = document.getElementById("editModal");
+    const content = document.getElementById("editModalContent");
+    content.innerHTML = `
+        <h3>✏️ ${day} ${currentMonth+1}.${currentYear}</h3>
+        <label>Тип дня:</label>
+        <select id="editTypeSelect">
+            <option value="work" ${currentType === "work" ? "selected" : ""}>Работа</option>
+            <option value="off" ${currentType === "off" ? "selected" : ""}>Выходной</option>
+            <option value="vacation" ${currentType === "vacation" ? "selected" : ""}>Отпуск</option>
+        </select>
+        <div id="shiftBlock">
+            <label>⏱️ Время (если работа):</label>
+            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${currentShift}">
+        </div>
+        <label>📁 Проект:</label>
+        <input type="text" id="editProjectInput" value="${currentProject}" placeholder="Название проекта">
+        <div class="modal-buttons">
+            <button id="saveEditBtn">💾 Сохранить</button>
+            <button id="cancelEditBtn" style="background:#64748b;">Отмена</button>
+        </div>
+    `;
+    modal.style.display = "flex";
+    
+    const typeSelect = document.getElementById("editTypeSelect");
+    const shiftBlock = document.getElementById("shiftBlock");
+    function toggleShift() {
+        shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
+    }
+    typeSelect.addEventListener("change", toggleShift);
+    toggleShift();
+    
+    document.getElementById("saveEditBtn").onclick = () => {
+        const newType = typeSelect.value;
+        let newShift = "";
+        if (newType === "work") {
+            newShift = document.getElementById("editShiftInput").value.trim();
+            if (!newShift) newShift = "02:00–08:00";
+        } else {
+            newShift = "";
+        }
+        const newProject = document.getElementById("editProjectInput").value.trim() || DEFAULT_PROJECT;
+        setDayData(currentYear, currentMonth, day, newType, newShift, newProject);
+        renderCalendar();
+        closeEditModal();
+    };
+    document.getElementById("cancelEditBtn").onclick = closeEditModal;
+}
+
+function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
+}
+
+// ----- ПАРСИНГ ТЕКСТОВОГО РАСПИСАНИЯ (гибкий) -----
+function parseScheduleFromText(rawText, targetYear, targetMonth) {
+    const lines = rawText.split(/\r?\n/);
+    const newDataMap = new Map(); // key -> { type, shiftText, project }
+    let i = 0;
+    while (i < lines.length) {
+        let line = lines[i].trim();
+        if (line === "") { i++; continue; }
+        // ожидаем дату в формате DD.MM.YYYY или DD.MM.YY?
+        const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})/);
+        if (!dateMatch) { i++; continue; }
+        let day = parseInt(dateMatch[1], 10);
+        let month = parseInt(dateMatch[2], 10);
+        let year = parseInt(dateMatch[3], 10);
+        if (year < 100) year = 2000 + year;
+        // проверяем, что месяц и год соответствуют текущему выбранному месяцу (либо если мы импортируем для текущего)
+        if (year !== targetYear || month !== (targetMonth + 1)) {
+            // если дата не совпадает с текущим месяцем, можно пропустить или предупредить, но мы пропустим, чтобы не засорять.
+            i++;
+            continue;
+        }
+        i++;
+        // следующая строка — описание: либо "02:00 - 08:00" либо "Выходной" либо "Отпуск"
+        let shiftDesc = "";
+        while (i < lines.length && lines[i].trim() === "") i++;
+        if (i < lines.length) shiftDesc = lines[i].trim();
+        i++;
+        // возможно строка с количеством часов (необязательно, пропускаем)
+        while (i < lines.length && lines[i].trim() === "") i++;
+        let maybeHours = null;
+        if (i < lines.length && /^\d+$/.test(lines[i].trim())) {
+            maybeHours = lines[i].trim();
+            i++;
+        }
+        while (i < lines.length && lines[i].trim() === "") i++;
+        let projectName = DEFAULT_PROJECT;
+        if (i < lines.length && lines[i].trim() !== "" && !lines[i].trim().match(/^\d{1,2}\.\d{2}\.\d{4}/)) {
+            projectName = lines[i].trim();
+            i++;
+        } else if (maybeHours !== null && !projectName) {
+            projectName = DEFAULT_PROJECT;
+        }
+        
+        let type = "work";
+        let shiftText = "";
+        if (shiftDesc.toLowerCase().includes("выходной")) {
+            type = "off";
+            shiftText = "";
+        } else if (shiftDesc.toLowerCase().includes("отпуск")) {
+            type = "vacation";
+            shiftText = "";
+        } else {
+            type = "work";
+            shiftText = shiftDesc;
+            if (!shiftText.match(/\d/)) shiftText = "02:00–08:00";
+        }
+        const key = getDateKey(year, month-1, day);
+        newDataMap.set(key, { type, shiftText, project: projectName || DEFAULT_PROJECT });
+    }
+    return newDataMap;
+}
+
+// применить импорт (текущий месяц)
+function importScheduleToCurrentMonth(rawText) {
+    const parsedMap = parseScheduleFromText(rawText, currentYear, currentMonth);
+    for (let [key, val] of parsedMap.entries()) {
+        scheduleData[key] = val;
+    }
+    renderCalendar();
+    closeImportPanel();
+    alert(`✅ Импорт завершён: добавлено/обновлено ${parsedMap.size} дней (только для ${currentMonth+1}.${currentYear})`);
+}
+
+// инициализация дефолтных данных для апреля 2026
+function initDefaultApril() {
+    const aprilDataRaw = {
+        1:"work",2:"work",3:"work",4:"off",5:"work",6:"work",
+        7:"off",8:"off",9:"off",10:"off",11:"work",12:"off",
+        13:"work",14:"work",15:"work",16:"off",17:"work",18:"work",
+        19:"off",20:"off",21:"work",22:"work",23:"off",24:"off",
+        25:"work",26:"work",27:"vacation",28:"vacation",29:"vacation",30:"vacation"
+    };
+    const shiftWork = "02:00–08:00";
+    for (let d=1; d<=30; d++) {
+        let type = aprilDataRaw[d];
+        let shift = (type === "work") ? shiftWork : "";
+        setDayData(2026, 3, d, type, shift, DEFAULT_PROJECT);
+    }
+}
+
+// сброс к текущему отображаемому месяцу (если это апрель 2026 - сброс в дефолт, иначе очистка и work по умолчанию)
+function resetToDefaultForCurrentView() {
+    if (currentYear === 2026 && currentMonth === 3) {
+        initDefaultApril();
+        renderCalendar();
+    } else {
+        // Для других месяцев: все дни work, время по умолчанию
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        for (let d=1; d<=daysInMonth; d++) {
+            setDayData(currentYear, currentMonth, d, "work", "02:00–08:00", DEFAULT_PROJECT);
+        }
+        renderCalendar();
+    }
+    alert(`Календарь ${currentMonth+1}.${currentYear} сброшен к стандартным рабочим дням`);
+}
+
+// смена месяца
+function changeMonth(delta) {
+    let newMonth = currentMonth + delta;
+    let newYear = currentYear;
+    if (newMonth < 0) {
+        newMonth = 11;
+        newYear--;
+    } else if (newMonth > 11) {
+        newMonth = 0;
+        newYear++;
+    }
+    currentYear = newYear;
+    currentMonth = newMonth;
+    renderCalendar();
+}
+
+// экспорт
+function exportPNG() {
+    html2canvas(document.getElementById("capture"), { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `calendar_${currentYear}_${currentMonth+1}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+}
+function exportPDF() {
+    html2canvas(document.getElementById("capture"), { scale: 2 }).then(canvas => {
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.save(`calendar_${currentYear}_${currentMonth+1}.pdf`);
+    });
+}
+
+// UI ивенты, панель импорта
+let importPanel = document.getElementById("importPanel");
+document.getElementById("showImportBtn").onclick = () => {
+    importPanel.style.display = "flex";
+};
+document.getElementById("closeImportBtn").onclick = () => {
+    importPanel.style.display = "none";
+};
+document.getElementById("applyImportBtn").onclick = () => {
+    const raw = document.getElementById("scheduleRawText").value;
+    if (!raw.trim()) {
+        alert("Вставьте текст с расписанием");
+        return;
+    }
+    importScheduleToCurrentMonth(raw);
+};
+document.getElementById("resetToDefaultBtn").onclick = () => resetToDefaultForCurrentView();
+document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
+document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
+
+// закрытие модалки кликом вне
+window.onclick = (e) => {
+    const modalElem = document.getElementById("editModal");
+    if (e.target === modalElem) closeEditModal();
 };
 
-const calendar = document.currentScript.parentElement;
+// ИНИЦИАЛИЗАЦИЯ
+initDefaultApril();      // заполняем апрель 2026 по умолчанию
+renderCalendar();
 
-for (let day = 1; day <= 30; day++) {
-    const type = data[day];
-
-    let text = "";
-    if (type === "work") text = "Работа 02:00–08:00";
-    if (type === "off") text = "Выходной";
-    if (type === "vacation") text = "Отпуск";
-
-    const div = document.createElement("div");
-    div.className = "day " + type;
-    div.innerHTML = `
-        <div class="date">${day}.04</div>
-        <div>${text}</div>
-        <div style="font-size:12px; opacity:0.8;">Лемана ПРО_B2C_голос_вход</div>
-    `;
-
-    calendar.appendChild(div);
-}
+// Доп. чтобы при переключении месяца данные для новых дней не терялись (авто создание work если нет)
+// но scheduleData уже хранит всё, что было ранее; при рендере если getDayData вернет null - то work по умолчанию,
+// добавим мягкую подстановку через геттер:
+const originalGetDayData = getDayData;
+window.getDayData = function(year, month, day) {
+    let data = originalGetDayData(year, month, day);
+    if (!data) {
+        // авто-инициализация: работа по умолчанию
+        return { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
+    }
+    return data;
+};
+// Переопределяем чтобы рендер использовал
+window.setDayData = setDayData;
+// небольшая синхронизация
+renderCalendar = (function(orig) {
+    return function() {
+        const calendarDiv = document.getElementById("calendar");
+        if(!calendarDiv) return;
+        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+        let startWeekday = firstDayOfMonth.getDay();
+        let startOffset = (startWeekday === 0 ? 6 : startWeekday - 1);
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const todayDate = new Date();
+        const isCurrentMonthView = (todayDate.getFullYear() === currentYear && todayDate.getMonth() === currentMonth);
+        calendarDiv.innerHTML = "";
+        for (let i=0;i<startOffset;i++) { /* пустые */ calendarDiv.appendChild(createEmptyCell());}
+        for (let d=1; d<=daysInMonth; d++) {
+            let dayData = window.getDayData(currentYear, currentMonth, d);
+            let type = dayData.type;
+            let shiftDisplay = (type === "work") ? (dayData.shiftText || "02:00–08:00") : (type === "off" ? "Выходной" : "Отпуск");
+            let extraInfo = (type === "work" ? `⚡ ${shiftDisplay}` : (type === "off" ? "🌿 Выходной" : "🏖️ Отпуск"));
+            if(dayData.project) extraInfo += ` · ${dayData.project.substring(0,18)}`;
+            const div = document.createElement("div");
+            div.className = `day ${type}`;
+            if(isCurrentMonthView && todayDate.getDate() === d) div.classList.add("today");
+            div.innerHTML = `<div class="date">${d}</div><div class="day-text">${extraInfo || ""}</div>`;
+            div.onclick = (function(day){return function(){openEditModal(day);};})(d);
+            calendarDiv.appendChild(div);
+        }
+        let total = startOffset+daysInMonth;
+        let rem = (7 - (total%7))%7;
+        for(let i=0;i<rem;i++) calendarDiv.appendChild(createEmptyCell());
+        const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+        document.getElementById("monthYearLabel").innerHTML = `${monthNames[currentMonth]} ${currentYear}`;
+    };
+    function createEmptyCell() {
+        const e = document.createElement("div");
+        e.className = "day";
+        e.style.background = "#fafcff";
+        e.style.opacity = "0.4";
+        e.style.cursor = "default";
+        e.innerHTML = `<div class="date" style="background:transparent"></div>`;
+        return e;
+    }
+})();
+renderCalendar();
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
+window.exportPNG = exportPNG;
+window.exportPDF = exportPDF;
 </script>
-
-</div>
-
-<!-- Легенда -->
-<div class="legend">
-    <div><div class="box" style="background:#3b82f6"></div> Рабочий день</div>
-    <div><div class="box" style="background:#e5e7eb"></div> Выходной</div>
-    <div><div class="box" style="background:#86efac"></div> Отпуск</div>
-</div>
-
-<!-- Сводка -->
-<div class="summary">
-    <strong>Сводка (1–26 апреля):</strong><br><br>
-    Рабочих дней: <b>15</b><br>
-    Выходных дней: <b>11</b><br>
-    Общее количество часов: <b>90 часов</b>
-</div>
-
-</div>
-
 </body>
 </html>
