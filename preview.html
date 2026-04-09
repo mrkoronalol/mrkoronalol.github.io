@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Календарь — Апрель 2026</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+}
+
+.day {
+    padding: 10px;
+    border-radius: 12px;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.date {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.work {
+    background: #3b82f6;
+    color: white;
+}
+
+.off {
+    background: #e5e7eb;
+}
+
+.vacation {
+    background: #86efac;
+}
+
+.legend {
+    margin-top: 30px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.legend div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.summary {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .calendar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Апрель 2026</h1>
+
+<div class="calendar">
+
+<!-- Дни -->
+<script>
+const data = {
+    1:"work",2:"work",3:"work",4:"off",5:"work",6:"work",
+    7:"off",8:"off",9:"off",10:"off",11:"work",12:"off",
+    13:"work",14:"work",15:"work",16:"off",17:"work",18:"work",
+    19:"off",20:"off",21:"work",22:"work",23:"off",24:"off",
+    25:"work",26:"work",27:"vacation",28:"vacation",29:"vacation",30:"vacation"
+};
+
+const calendar = document.currentScript.parentElement;
+
+for (let day = 1; day <= 30; day++) {
+    const type = data[day];
+
+    let text = "";
+    if (type === "work") text = "Работа 02:00–08:00";
+    if (type === "off") text = "Выходной";
+    if (type === "vacation") text = "Отпуск";
+
+    const div = document.createElement("div");
+    div.className = "day " + type;
+    div.innerHTML = `
+        <div class="date">${day}.04</div>
+        <div>${text}</div>
+        <div style="font-size:12px; opacity:0.8;">Лемана ПРО_B2C_голос_вход</div>
+    `;
+
+    calendar.appendChild(div);
+}
+</script>
+
+</div>
+
+<!-- Легенда -->
+<div class="legend">
+    <div><div class="box" style="background:#3b82f6"></div> Рабочий день</div>
+    <div><div class="box" style="background:#e5e7eb"></div> Выходной</div>
+    <div><div class="box" style="background:#86efac"></div> Отпуск</div>
+</div>
+
+<!-- Сводка -->
+<div class="summary">
+    <strong>Сводка (1–26 апреля):</strong><br><br>
+    Рабочих дней: <b>15</b><br>
+    Выходных дней: <b>11</b><br>
+    Общее количество часов: <b>90 часов</b>
+</div>
+
+</div>
+
+</body>
+</html>
