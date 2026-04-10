@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Календарь сотрудника — Лемана ПРО</title>
+<title>Календарь сотрудника — Облачная синхронизация</title>
 
 <!-- html2canvas + jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -30,7 +30,6 @@ body {
     border-radius: 28px;
     box-shadow: 0 12px 30px rgba(0,0,0,0.08);
     padding: 16px 16px 24px 16px;
-    transition: all 0.2s;
 }
 
 .header-flex {
@@ -49,7 +48,6 @@ h1 {
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
-    letter-spacing: -0.3px;
 }
 
 .month-nav {
@@ -128,62 +126,28 @@ button:active {
     background: #2b6e4f;
 }
 
-.btn-import:active {
-    background: #1e5940;
+.btn-sync {
+    background: #8b5cf6;
 }
 
-/* Модальное окно импорта */
-.import-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
+.sync-status {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    z-index: 1001;
-    backdrop-filter: blur(4px);
-    padding: 16px;
+    gap: 6px;
 }
 
-.import-modal-content {
-    background: white;
-    padding: 24px;
-    border-radius: 32px;
-    max-width: 550px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 25px 45px rgba(0,0,0,0.25);
+.sync-status.synced {
+    background: #d1fae5;
+    color: #065f46;
 }
 
-.import-modal-content h3 {
-    margin-top: 0;
-    font-size: 1.35rem;
-    margin-bottom: 16px;
-}
-
-.import-modal-content textarea {
-    width: 100%;
-    padding: 12px;
-    border-radius: 16px;
-    border: 1px solid #cbd5e1;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    resize: vertical;
-    margin: 10px 0;
-}
-
-.import-modal-content .info {
-    font-size: 0.75rem;
-    color: #64748b;
-    margin: 8px 0;
-}
-
-.modal-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 16px;
+.sync-status.syncing {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .weekday-header {
@@ -218,14 +182,12 @@ button:active {
     transition: 0.12s ease;
     background: #ffffff;
     border: 1px solid #eef2f6;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     display: flex;
     flex-direction: column;
 }
 
 .day:active {
     transform: scale(0.98);
-    background: #f8fafc;
 }
 
 .date {
@@ -239,8 +201,6 @@ button:active {
     padding: 2px 0;
     width: 32px;
     border-radius: 40px;
-    text-align: center;
-    font-size: 0.85rem;
 }
 
 .work { background: linear-gradient(145deg, #d9e9ff, #ecf5ff); border-left: 4px solid #3b82f6; }
@@ -249,7 +209,6 @@ button:active {
 .today .date {
     background: #f59e0b;
     color: white;
-    box-shadow: 0 2px 6px rgba(245,158,11,0.3);
 }
 
 .day-text {
@@ -259,11 +218,51 @@ button:active {
     margin-top: 4px;
     word-break: break-word;
     line-height: 1.3;
-    overflow-wrap: break-word;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 32px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    font-size: 1.35rem;
+}
+
+.modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    font-family: monospace;
+    font-size: 12px;
+    resize: vertical;
+    margin: 10px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
 }
 
 .edit-modal {
@@ -274,7 +273,6 @@ button:active {
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    backdrop-filter: blur(4px);
     padding: 16px;
 }
 
@@ -284,13 +282,6 @@ button:active {
     border-radius: 32px;
     max-width: 340px;
     width: 100%;
-    box-shadow: 0 25px 45px rgba(0,0,0,0.25);
-}
-
-.edit-modal-content h3 {
-    margin-top: 0;
-    font-size: 1.35rem;
-    margin-bottom: 16px;
 }
 
 .edit-modal-content select, .edit-modal-content input {
@@ -299,41 +290,21 @@ button:active {
     margin: 10px 0;
     border-radius: 60px;
     border: 1px solid #cbd5e1;
-    font-size: 0.9rem;
-    background: white;
 }
 
 .empty-cell {
     background: #fafcff;
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: default;
     min-height: 70px;
-    border: 1px solid #f0f2f5;
-}
-
-.empty-cell:active {
-    transform: none;
 }
 
 @media (max-width: 600px) {
-    body { padding: 8px; }
-    .container { padding: 12px 12px 20px 12px; border-radius: 24px; }
-    .weekday-header { gap: 4px; padding: 6px 0; }
-    .weekday-header span { font-size: 0.65rem; }
-    .calendar { gap: 5px; }
     .day { min-height: 72px; padding: 6px 3px; }
-    .date { font-size: 0.75rem; width: 28px; margin-bottom: 4px; }
-    .day-text { font-size: 0.6rem; line-height: 1.2; }
-    h1 { font-size: 1.25rem; }
+    .date { font-size: 0.75rem; width: 28px; }
+    .day-text { font-size: 0.6rem; }
     .month-nav span { font-size: 0.85rem; min-width: 90px; }
-    .month-nav button { width: 32px; height: 32px; font-size: 1rem; }
     button { padding: 6px 12px; font-size: 0.7rem; }
-}
-
-@media (max-width: 450px) {
-    .day { min-height: 68px; }
-    .day-text { font-size: 0.55rem; -webkit-line-clamp: 2; }
-    .calendar { gap: 4px; }
 }
 </style>
 </head>
@@ -343,9 +314,9 @@ button:active {
     <div class="header-flex">
         <h1>📅 Рабочий календарь</h1>
         <div class="month-nav">
-            <button id="prevMonthBtn" aria-label="Предыдущий месяц">←</button>
+            <button id="prevMonthBtn">←</button>
             <span id="monthYearLabel">Апрель 2026</span>
-            <button id="nextMonthBtn" aria-label="Следующий месяц">→</button>
+            <button id="nextMonthBtn">→</button>
         </div>
     </div>
     
@@ -353,11 +324,16 @@ button:active {
         <div class="btn-group">
             <button onclick="exportPNG()">📸 PNG</button>
             <button onclick="exportPDF()">📄 PDF</button>
-            <button id="showImportBtn" class="btn-import">📥 Импорт графика</button>
+            <button id="showImportBtn" class="btn-import">📥 Импорт расписания</button>
         </div>
         <div class="btn-group">
-            <button id="resetToDefaultBtn">⟳ Сброс</button>
+            <button id="syncNowBtn" class="btn-sync">🔄 Синхронизировать</button>
+            <button id="resetToDefaultBtn">⟳ Сброс месяца</button>
         </div>
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+        <div id="syncStatus" class="sync-status">🟢 Синхронизировано</div>
     </div>
 
     <div class="weekday-header">
@@ -366,72 +342,93 @@ button:active {
     <div class="calendar" id="calendar"></div>
 </div>
 
-<!-- Модальное окно редактирования -->
 <div class="edit-modal" id="editModal">
     <div class="edit-modal-content" id="editModalContent"></div>
 </div>
 
-<!-- Модальное окно импорта -->
-<div class="import-modal-overlay" id="importModal">
-    <div class="import-modal-content">
+<div class="modal-overlay" id="importModal">
+    <div class="modal-content">
         <h3>📥 Импорт расписания</h3>
-        <p style="font-size: 0.85rem; color: #475569;">Вставьте данные в формате:</p>
-        <textarea id="importText" rows="10" placeholder="Пример:
-01.04.2026
-02:00 - 08:00
-6
-Лемана ПРО_B2C_голос_вход
-02.04.2026
-Выходной
-Лемана ПРО_B2C_голос_вход
-03.04.2026
-Отпуск
-Лемана ПРО_B2C_голос_вход"></textarea>
-        <div class="info">✅ Поддерживаются форматы: "02:00 - 08:00", "Выходной", "Отпуск"<br>
-        📅 Импортируются даты только для выбранного месяца: <strong id="importMonthLabel">Апрель 2026</strong></div>
+        <textarea id="importText" rows="8" placeholder="01.04.2026&#10;02:00 - 08:00&#10;6&#10;Лемана ПРО_B2C_голос_вход"></textarea>
         <div class="modal-buttons">
-            <button id="applyImportBtn" style="background: #2b6e4f;">📌 Применить</button>
-            <button id="closeImportBtn" style="background: #64748b;">Отмена</button>
+            <button id="applyImportBtn" style="background:#2b6e4f;">Применить</button>
+            <button id="closeImportBtn">Отмена</button>
         </div>
     </div>
 </div>
 
 <script>
-// ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
+// ========== НАСТРОЙКИ ==========
+// ⚠️ ЗАМЕНИТЕ НА ВАШ URL ОТ GOOGLE APPS SCRIPT ⚠️
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweUql7Oxz70dVGGd32Fi0kU1i8mxLKAxdKfdWMxrL_mvsTWQY4Q-TxDrSo3lX6Sef6tg/exec";
+
+// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentYear = 2026;
-let currentMonth = 3;     // 3 = апрель
+let currentMonth = 3;
 let scheduleData = {};
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
-const STORAGE_KEY = "workCalendarData";
+const STORAGE_KEY = "workCalendarCache";
 
-// ========== РАБОТА С LOCALSTORAGE ==========
-function saveToLocalStorage() {
+// ========== ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ ==========
+async function syncWithCloud() {
+    const statusDiv = document.getElementById("syncStatus");
+    statusDiv.className = "sync-status syncing";
+    statusDiv.innerHTML = "🔄 Синхронизация...";
+    
     try {
-        const toSave = {
-            data: scheduleData,
-            version: "1.0",
-            timestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-        console.log("✅ Данные сохранены");
-    } catch(e) {
-        console.warn("Ошибка сохранения:", e);
+        // Загружаем данные из облака
+        const response = await fetch(`${SCRIPT_URL}?action=load&t=${Date.now()}`);
+        const cloudData = await response.json();
+        
+        if (Object.keys(cloudData).length > 0) {
+            scheduleData = cloudData;
+            saveToLocalCache();
+            renderCalendar();
+            statusDiv.className = "sync-status synced";
+            statusDiv.innerHTML = "✅ Синхронизировано с облаком";
+            setTimeout(() => {
+                statusDiv.innerHTML = "🟢 Синхронизировано";
+            }, 2000);
+        } else {
+            // Если облако пустое, загружаем локальные данные в облако
+            await saveToCloud();
+        }
+    } catch (error) {
+        console.error("Ошибка синхронизации:", error);
+        statusDiv.className = "sync-status syncing";
+        statusDiv.innerHTML = "⚠️ Офлайн режим (данные локально)";
+        // Загружаем из кэша
+        loadFromLocalCache();
+        renderCalendar();
     }
 }
 
-function loadFromLocalStorage() {
+async function saveToCloud() {
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            if (parsed.data && typeof parsed.data === 'object') {
-                scheduleData = parsed.data;
-                console.log("📦 Данные загружены из localStorage");
-                return true;
-            }
-        }
-    } catch(e) {
-        console.warn("Ошибка загрузки:", e);
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(scheduleData)
+        });
+        console.log("✅ Данные сохранены в облако");
+        return true;
+    } catch (error) {
+        console.error("Ошибка сохранения в облако:", error);
+        return false;
+    }
+}
+
+// Локальный кэш (на случай офлайн)
+function saveToLocalCache() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scheduleData));
+}
+
+function loadFromLocalCache() {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached) {
+        scheduleData = JSON.parse(cached);
+        return true;
     }
     return false;
 }
@@ -441,14 +438,17 @@ function getDateKey(year, month, day) {
     return `${year}-${month + 1}-${day}`;
 }
 
-function setDayData(year, month, day, type, shiftText, project) {
+async function setDayData(year, month, day, type, shiftText, project) {
     const key = getDateKey(year, month, day);
     scheduleData[key] = { 
         type, 
         shiftText: shiftText || (type === "work" ? "02:00–08:00" : ""), 
         project: project || DEFAULT_PROJECT 
     };
-    saveToLocalStorage();
+    saveToLocalCache();
+    renderCalendar();
+    // Фоновая синхронизация
+    await saveToCloud();
 }
 
 function getDayData(year, month, day) {
@@ -476,7 +476,7 @@ function initDefaultApril() {
     }
 }
 
-// ========== ОТРИСОВКА КАЛЕНДАРЯ ==========
+// ========== ОТРИСОВКА ==========
 function renderCalendar() {
     const calendarDiv = document.getElementById("calendar");
     if (!calendarDiv) return;
@@ -485,7 +485,6 @@ function renderCalendar() {
     const firstDay = new Date(currentYear, currentMonth, 1);
     let startWeekday = firstDay.getDay();
     let startOffset = (startWeekday === 0 ? 6 : startWeekday - 1);
-    
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const todayDate = new Date();
     const isCurrentMonthView = (todayDate.getFullYear() === currentYear && todayDate.getMonth() === currentMonth);
@@ -493,10 +492,7 @@ function renderCalendar() {
     for (let i = 0; i < startOffset; i++) {
         const emptyDiv = document.createElement("div");
         emptyDiv.className = "day empty-cell";
-        emptyDiv.style.background = "#fafcff";
-        emptyDiv.style.opacity = "0.45";
-        emptyDiv.style.cursor = "default";
-        emptyDiv.innerHTML = `<div class="date" style="background:transparent; opacity:0.5"></div>`;
+        emptyDiv.innerHTML = `<div class="date"></div>`;
         calendarDiv.appendChild(emptyDiv);
     }
     
@@ -508,26 +504,15 @@ function renderCalendar() {
         else if (type === "off") shiftDisplay = "Выходной";
         else shiftDisplay = "Отпуск";
         
-        let extraInfo = "";
-        if (type === "work") extraInfo = `⚡ ${shiftDisplay}`;
-        else if (type === "off") extraInfo = `🌿 ${shiftDisplay}`;
-        else extraInfo = `🏖️ ${shiftDisplay}`;
-        
-        const projectShort = dayData.project && dayData.project.length > 18 ? dayData.project.substring(0, 16) + ".." : dayData.project;
+        let extraInfo = type === "work" ? `⚡ ${shiftDisplay}` : (type === "off" ? `🌿 ${shiftDisplay}` : `🏖️ ${shiftDisplay}`);
+        const projectShort = dayData.project?.substring(0, 16);
         if (projectShort && projectShort !== DEFAULT_PROJECT) extraInfo += ` · ${projectShort}`;
         
         const dayDiv = document.createElement("div");
         dayDiv.className = `day ${type}`;
-        if (isCurrentMonthView && todayDate.getDate() === d) {
-            dayDiv.classList.add("today");
-        }
-        dayDiv.innerHTML = `
-            <div class="date">${d}</div>
-            <div class="day-text">${extraInfo || (type === "work" ? "Рабочий день" : (type === "off" ? "Выходной" : "Отпуск"))}</div>
-        `;
-        dayDiv.onclick = (function(dayNum) {
-            return function() { openEditModal(dayNum); };
-        })(d);
+        if (isCurrentMonthView && todayDate.getDate() === d) dayDiv.classList.add("today");
+        dayDiv.innerHTML = `<div class="date">${d}</div><div class="day-text">${extraInfo}</div>`;
+        dayDiv.onclick = () => openEditModal(d);
         calendarDiv.appendChild(dayDiv);
     }
     
@@ -536,10 +521,7 @@ function renderCalendar() {
     for (let i = 0; i < remainingCells; i++) {
         const emptyDiv = document.createElement("div");
         emptyDiv.className = "day empty-cell";
-        emptyDiv.style.background = "#fafcff";
-        emptyDiv.style.opacity = "0.45";
-        emptyDiv.style.cursor = "default";
-        emptyDiv.innerHTML = `<div class="date" style="background:transparent"></div>`;
+        emptyDiv.innerHTML = `<div class="date"></div>`;
         calendarDiv.appendChild(emptyDiv);
     }
     
@@ -550,195 +532,132 @@ function renderCalendar() {
 // ========== РЕДАКТИРОВАНИЕ ==========
 function openEditModal(day) {
     const existing = getDayData(currentYear, currentMonth, day);
-    const currentType = existing.type;
-    const currentShift = existing.shiftText || "02:00–08:00";
-    const currentProject = existing.project || DEFAULT_PROJECT;
-    
     const modal = document.getElementById("editModal");
     const content = document.getElementById("editModalContent");
     content.innerHTML = `
         <h3>✏️ ${day} ${currentMonth+1}.${currentYear}</h3>
-        <label>Тип дня:</label>
         <select id="editTypeSelect">
-            <option value="work" ${currentType === "work" ? "selected" : ""}>Работа</option>
-            <option value="off" ${currentType === "off" ? "selected" : ""}>Выходной</option>
-            <option value="vacation" ${currentType === "vacation" ? "selected" : ""}>Отпуск</option>
+            <option value="work" ${existing.type === "work" ? "selected" : ""}>Работа</option>
+            <option value="off" ${existing.type === "off" ? "selected" : ""}>Выходной</option>
+            <option value="vacation" ${existing.type === "vacation" ? "selected" : ""}>Отпуск</option>
         </select>
         <div id="shiftBlock">
-            <label>⏱️ Время (если работа):</label>
-            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${currentShift.replace(/"/g, '&quot;')}">
+            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${existing.shiftText || "02:00–08:00"}">
         </div>
-        <label>📁 Проект:</label>
-        <input type="text" id="editProjectInput" value="${currentProject.replace(/"/g, '&quot;')}" placeholder="Название проекта">
+        <input type="text" id="editProjectInput" value="${existing.project || DEFAULT_PROJECT}" placeholder="Проект">
         <div class="modal-buttons">
             <button id="saveEditBtn">💾 Сохранить</button>
-            <button id="cancelEditBtn" style="background:#64748b;">Отмена</button>
+            <button id="cancelEditBtn">Отмена</button>
         </div>
     `;
     modal.style.display = "flex";
     
     const typeSelect = document.getElementById("editTypeSelect");
-    const shiftBlockDiv = document.getElementById("shiftBlock");
-    function toggleShiftField() {
-        shiftBlockDiv.style.display = typeSelect.value === "work" ? "block" : "none";
-    }
-    typeSelect.addEventListener("change", toggleShiftField);
-    toggleShiftField();
+    const shiftBlock = document.getElementById("shiftBlock");
+    typeSelect.onchange = () => shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
+    shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
     
-    document.getElementById("saveEditBtn").onclick = () => {
+    document.getElementById("saveEditBtn").onclick = async () => {
         const newType = typeSelect.value;
-        let newShift = "";
-        if (newType === "work") {
-            newShift = document.getElementById("editShiftInput").value.trim();
-            if (!newShift) newShift = "02:00–08:00";
-        }
-        const newProject = document.getElementById("editProjectInput").value.trim();
-        const finalProject = newProject === "" ? DEFAULT_PROJECT : newProject;
-        setDayData(currentYear, currentMonth, day, newType, newShift, finalProject);
-        renderCalendar();
-        closeEditModal();
+        let newShift = newType === "work" ? document.getElementById("editShiftInput").value.trim() : "";
+        if (newType === "work" && !newShift) newShift = "02:00–08:00";
+        const newProject = document.getElementById("editProjectInput").value.trim() || DEFAULT_PROJECT;
+        await setDayData(currentYear, currentMonth, day, newType, newShift, newProject);
+        modal.style.display = "none";
     };
-    document.getElementById("cancelEditBtn").onclick = closeEditModal;
+    document.getElementById("cancelEditBtn").onclick = () => modal.style.display = "none";
 }
 
-function closeEditModal() {
-    document.getElementById("editModal").style.display = "none";
-}
-
-// ========== ПАРСИНГ ГРАФИКА ==========
+// ========== ИМПОРТ РАСПИСАНИЯ ==========
 function parseScheduleFromText(rawText, targetYear, targetMonth) {
     const lines = rawText.split(/\r?\n/);
-    const updates = new Map();
+    const updates = {};
     
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
-        if (line === "") continue;
-        
-        // Ищем дату в формате DD.MM.YYYY
         const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
         if (!dateMatch) continue;
         
-        let day = parseInt(dateMatch[1], 10);
-        let month = parseInt(dateMatch[2], 10);
-        let year = parseInt(dateMatch[3], 10);
+        let day = parseInt(dateMatch[1]);
+        let month = parseInt(dateMatch[2]);
+        let year = parseInt(dateMatch[3]);
+        if (year !== targetYear || month !== (targetMonth + 1)) continue;
         
-        // Проверяем, соответствует ли дата выбранному месяцу
-        if (year !== targetYear || month !== (targetMonth + 1)) {
-            continue; // Пропускаем даты не текущего месяца
-        }
-        
-        // Переходим к следующей строке (описание: время/выходной/отпуск)
         i++;
-        while (i < lines.length && lines[i].trim() === "") i++;
+        while (i < lines.length && !lines[i].trim()) i++;
         if (i >= lines.length) break;
-        
         let shiftDesc = lines[i].trim();
         i++;
-        
-        // Пропускаем строку с количеством часов (цифра)
-        while (i < lines.length && lines[i].trim() === "") i++;
-        if (i < lines.length && /^\d+$/.test(lines[i].trim())) {
+        while (i < lines.length && /^\d+$/.test(lines[i].trim())) i++;
+        while (i < lines.length && !lines[i].trim()) i++;
+        let project = DEFAULT_PROJECT;
+        if (i < lines.length && lines[i].trim() && !lines[i].trim().match(/^\d{1,2}\.\d{2}\.\d{4}/)) {
+            project = lines[i].trim();
             i++;
         }
         
-        // Читаем проект (следующая непустая строка)
-        while (i < lines.length && lines[i].trim() === "") i++;
-        let projectName = DEFAULT_PROJECT;
-        if (i < lines.length && lines[i].trim() !== "" && !lines[i].trim().match(/^\d{1,2}\.\d{2}\.\d{4}/)) {
-            projectName = lines[i].trim();
-            i++;
-        }
+        let type = "work", shiftText = "";
+        if (shiftDesc.toLowerCase().includes("выходной")) type = "off";
+        else if (shiftDesc.toLowerCase().includes("отпуск")) type = "vacation";
+        else shiftText = shiftDesc;
         
-        // Определяем тип дня
-        let type = "work";
-        let shiftText = "";
-        const lowerDesc = shiftDesc.toLowerCase();
-        
-        if (lowerDesc.includes("выходной")) {
-            type = "off";
-            shiftText = "";
-        } else if (lowerDesc.includes("отпуск")) {
-            type = "vacation";
-            shiftText = "";
-        } else {
-            type = "work";
-            shiftText = shiftDesc;
-            if (!shiftText.match(/\d/)) shiftText = "02:00–08:00";
-        }
-        
-        const key = getDateKey(year, month - 1, day);
-        updates.set(key, { type, shiftText, project: projectName || DEFAULT_PROJECT });
+        updates[getDateKey(year, month - 1, day)] = { type, shiftText, project };
     }
-    
     return updates;
 }
 
-// Импорт для текущего выбранного месяца
-function importScheduleForCurrentMonth(rawText) {
+async function importSchedule(rawText) {
     const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
-    
-    if (parsed.size === 0) {
-        alert(`❌ Не найдено подходящих дат для ${currentMonth+1}.${currentYear}\n\nПроверьте формат: ДД.ММ.ГГГГ\nПример: 01.${String(currentMonth+1).padStart(2,'0')}.${currentYear}`);
-        return false;
+    if (Object.keys(parsed).length === 0) {
+        alert("Не найдено дат для текущего месяца");
+        return;
     }
-    
-    for (let [key, val] of parsed.entries()) {
-        scheduleData[key] = val;
-    }
-    saveToLocalStorage();
+    Object.assign(scheduleData, parsed);
+    saveToLocalCache();
+    await saveToCloud();
     renderCalendar();
-    alert(`✅ Импорт завершён!\nОбновлено ${parsed.size} дней (${currentMonth+1}.${currentYear})`);
-    return true;
+    alert(`Импортировано ${Object.keys(parsed).length} дней`);
 }
 
-function resetCurrentMonthToDefault() {
+// ========== ДРУГИЕ ФУНКЦИИ ==========
+async function resetCurrentMonth() {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    if (currentYear === 2026 && currentMonth === 3) {
-        for (let d = 1; d <= 30; d++) {
-            const key = getDateKey(2026, 3, d);
-            delete scheduleData[key];
-        }
-        initDefaultApril();
-    } else {
+    for (let d = 1; d <= daysInMonth; d++) {
+        const key = getDateKey(currentYear, currentMonth, d);
+        delete scheduleData[key];
+    }
+    if (currentYear === 2026 && currentMonth === 3) initDefaultApril();
+    else {
         for (let d = 1; d <= daysInMonth; d++) {
-            const key = getDateKey(currentYear, currentMonth, d);
-            scheduleData[key] = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
+            scheduleData[getDateKey(currentYear, currentMonth, d)] = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
         }
     }
-    saveToLocalStorage();
+    saveToLocalCache();
+    await saveToCloud();
     renderCalendar();
-    alert(`Календарь ${currentMonth+1}.${currentYear} сброшен к стандартным рабочим дням`);
 }
 
 function changeMonth(delta) {
     let newMonth = currentMonth + delta;
     let newYear = currentYear;
-    if (newMonth < 0) {
-        newMonth = 11;
-        newYear--;
-    } else if (newMonth > 11) {
-        newMonth = 0;
-        newYear++;
-    }
+    if (newMonth < 0) { newMonth = 11; newYear--; }
+    if (newMonth > 11) { newMonth = 0; newYear++; }
     currentYear = newYear;
     currentMonth = newMonth;
     renderCalendar();
 }
 
-// ========== ЭКСПОРТ ==========
 function exportPNG() {
-    const element = document.getElementById("capture");
-    html2canvas(element, { scale: 2, backgroundColor: "#ffffff", logging: false }).then(canvas => {
+    html2canvas(document.getElementById("capture"), { scale: 2 }).then(canvas => {
         const link = document.createElement("a");
         link.download = `calendar_${currentYear}_${currentMonth+1}.png`;
         link.href = canvas.toDataURL();
         link.click();
-    }).catch(() => alert("Ошибка создания PNG"));
+    });
 }
 
 function exportPDF() {
-    const element = document.getElementById("capture");
-    html2canvas(element, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+    html2canvas(document.getElementById("capture"), { scale: 2 }).then(canvas => {
         const imgData = canvas.toDataURL("image/png");
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -746,55 +665,30 @@ function exportPDF() {
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         pdf.save(`calendar_${currentYear}_${currentMonth+1}.pdf`);
-    }).catch(() => alert("Ошибка PDF"));
+    });
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-const loaded = loadFromLocalStorage();
-if (!loaded || Object.keys(scheduleData).length === 0) {
-    initDefaultApril();
-    saveToLocalStorage();
-}
-
-// Модальное окно импорта
 const importModal = document.getElementById("importModal");
-const importTextarea = document.getElementById("importText");
-const importMonthLabel = document.getElementById("importMonthLabel");
-
-function openImportModal() {
-    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-    importMonthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-    importModal.style.display = "flex";
-}
-
-function closeImportModal() {
-    importModal.style.display = "none";
-    importTextarea.value = "";
-}
-
-// Обработчики
-document.getElementById("showImportBtn").onclick = openImportModal;
-document.getElementById("closeImportBtn").onclick = closeImportModal;
+document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
+document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
 document.getElementById("applyImportBtn").onclick = () => {
-    const rawText = importTextarea.value;
-    if (!rawText.trim()) {
-        alert("Вставьте текст с расписанием");
-        return;
-    }
-    importScheduleForCurrentMonth(rawText);
-    closeImportModal();
+    const text = document.getElementById("importText").value;
+    if (text.trim()) importSchedule(text);
+    importModal.style.display = "none";
 };
-document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonthToDefault();
+document.getElementById("syncNowBtn").onclick = syncWithCloud;
+document.getElementById("resetToDefaultBtn").onclick = resetCurrentMonth;
 document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
 document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
 
-window.onclick = (e) => {
-    const editModal = document.getElementById("editModal");
-    if (e.target === editModal) closeEditModal();
-    if (e.target === importModal) closeImportModal();
-};
-
+// Загрузка данных
+if (!loadFromLocalCache()) {
+    initDefaultApril();
+    saveToLocalCache();
+}
 renderCalendar();
+syncWithCloud(); // Автосинхронизация при загрузке
 </script>
 </body>
 </html>
