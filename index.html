@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Календарь сотрудника — Облачная синхронизация</title>
+<title>Календарь сотрудника — Облачное хранилище</title>
 
 <!-- html2canvas + jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -140,14 +140,19 @@ button:active {
     gap: 6px;
 }
 
-.sync-status.synced {
+.sync-status.loading {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.sync-status.success {
     background: #d1fae5;
     color: #065f46;
 }
 
-.sync-status.syncing {
-    background: #fef3c7;
-    color: #92400e;
+.sync-status.error {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
 .weekday-header {
@@ -327,13 +332,14 @@ button:active {
             <button id="showImportBtn" class="btn-import">📥 Импорт расписания</button>
         </div>
         <div class="btn-group">
-            <button id="syncNowBtn" class="btn-sync">🔄 Синхронизировать</button>
+            <button id="refreshBtn" class="btn-sync">🔄 Обновить из облака</button>
             <button id="resetToDefaultBtn">⟳ Сброс месяца</button>
         </div>
     </div>
     
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-        <div id="syncStatus" class="sync-status">🟢 Синхронизировано</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div id="syncStatus" class="sync-status">☁️ Облачное хранилище</div>
+        <div style="font-size: 0.7rem; color: #64748b;">💾 Все изменения сохраняются автоматически</div>
     </div>
 
     <div class="weekday-header">
@@ -360,77 +366,91 @@ button:active {
 <script>
 // ========== НАСТРОЙКИ ==========
 // ⚠️ ЗАМЕНИТЕ НА ВАШ URL ОТ GOOGLE APPS SCRIPT ⚠️
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweUql7Oxz70dVGGd32Fi0kU1i8mxLKAxdKfdWMxrL_mvsTWQY4Q-TxDrSo3lX6Sef6tg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_ID/exec";
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentYear = 2026;
 let currentMonth = 3;
 let scheduleData = {};
+let isLoading = false;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
-const STORAGE_KEY = "workCalendarCache";
 
-// ========== ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ ==========
-async function syncWithCloud() {
+// ========== ЗАГРУЗКА ИЗ ОБЛАКА ==========
+async function loadFromCloud() {
+    if (isLoading) return;
+    isLoading = true;
+    
     const statusDiv = document.getElementById("syncStatus");
-    statusDiv.className = "sync-status syncing";
-    statusDiv.innerHTML = "🔄 Синхронизация...";
+    statusDiv.className = "sync-status loading";
+    statusDiv.innerHTML = "☁️ Загрузка из облака...";
     
     try {
-        // Загружаем данные из облака
         const response = await fetch(`${SCRIPT_URL}?action=load&t=${Date.now()}`);
         const cloudData = await response.json();
         
-        if (Object.keys(cloudData).length > 0) {
+        if (cloudData && Object.keys(cloudData).length > 0) {
             scheduleData = cloudData;
-            saveToLocalCache();
-            renderCalendar();
-            statusDiv.className = "sync-status synced";
-            statusDiv.innerHTML = "✅ Синхронизировано с облаком";
+            statusDiv.className = "sync-status success";
+            statusDiv.innerHTML = "✅ Данные загружены из облака";
             setTimeout(() => {
-                statusDiv.innerHTML = "🟢 Синхронизировано";
+                statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
         } else {
-            // Если облако пустое, загружаем локальные данные в облако
+            // Если облако пустое, создаём дефолтные данные и сохраняем
+            initDefaultApril();
             await saveToCloud();
+            statusDiv.className = "sync-status success";
+            statusDiv.innerHTML = "📤 Созданы новые данные в облаке";
+            setTimeout(() => {
+                statusDiv.innerHTML = "☁️ Облачное хранилище";
+            }, 2000);
         }
-    } catch (error) {
-        console.error("Ошибка синхронизации:", error);
-        statusDiv.className = "sync-status syncing";
-        statusDiv.innerHTML = "⚠️ Офлайн режим (данные локально)";
-        // Загружаем из кэша
-        loadFromLocalCache();
+        
         renderCalendar();
+    } catch (error) {
+        console.error("Ошибка загрузки:", error);
+        statusDiv.className = "sync-status error";
+        statusDiv.innerHTML = "❌ Ошибка подключения к облаку";
+        
+        // Показываем заглушку с дефолтными данными
+        initDefaultApril();
+        renderCalendar();
+    } finally {
+        isLoading = false;
     }
 }
 
+// ========== СОХРАНЕНИЕ В ОБЛАКО ==========
 async function saveToCloud() {
+    const statusDiv = document.getElementById("syncStatus");
+    const originalText = statusDiv.innerHTML;
+    statusDiv.className = "sync-status loading";
+    statusDiv.innerHTML = "💾 Сохранение...";
+    
     try {
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(scheduleData)
         });
-        console.log("✅ Данные сохранены в облако");
+        
+        statusDiv.className = "sync-status success";
+        statusDiv.innerHTML = "✅ Сохранено";
+        setTimeout(() => {
+            statusDiv.innerHTML = "☁️ Облачное хранилище";
+        }, 1500);
+        
         return true;
     } catch (error) {
-        console.error("Ошибка сохранения в облако:", error);
+        console.error("Ошибка сохранения:", error);
+        statusDiv.className = "sync-status error";
+        statusDiv.innerHTML = "⚠️ Ошибка сохранения";
+        setTimeout(() => {
+            statusDiv.innerHTML = "☁️ Облачное хранилище";
+        }, 2000);
         return false;
     }
-}
-
-// Локальный кэш (на случай офлайн)
-function saveToLocalCache() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(scheduleData));
-}
-
-function loadFromLocalCache() {
-    const cached = localStorage.getItem(STORAGE_KEY);
-    if (cached) {
-        scheduleData = JSON.parse(cached);
-        return true;
-    }
-    return false;
 }
 
 // ========== РАБОТА С ДАННЫМИ ==========
@@ -445,9 +465,8 @@ async function setDayData(year, month, day, type, shiftText, project) {
         shiftText: shiftText || (type === "work" ? "02:00–08:00" : ""), 
         project: project || DEFAULT_PROJECT 
     };
-    saveToLocalCache();
     renderCalendar();
-    // Фоновая синхронизация
+    // Сохраняем в облако после каждого изменения
     await saveToCloud();
 }
 
@@ -470,9 +489,7 @@ function initDefaultApril() {
         let type = defaultTypes[d];
         let shift = (type === "work") ? "02:00–08:00" : "";
         const key = getDateKey(2026, 3, d);
-        if (!scheduleData[key]) {
-            scheduleData[key] = { type, shiftText: shift, project: DEFAULT_PROJECT };
-        }
+        scheduleData[key] = { type, shiftText: shift, project: DEFAULT_PROJECT };
     }
 }
 
@@ -542,9 +559,9 @@ function openEditModal(day) {
             <option value="vacation" ${existing.type === "vacation" ? "selected" : ""}>Отпуск</option>
         </select>
         <div id="shiftBlock">
-            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${existing.shiftText || "02:00–08:00"}">
+            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${(existing.shiftText || "02:00–08:00").replace(/"/g, '&quot;')}">
         </div>
-        <input type="text" id="editProjectInput" value="${existing.project || DEFAULT_PROJECT}" placeholder="Проект">
+        <input type="text" id="editProjectInput" value="${(existing.project || DEFAULT_PROJECT).replace(/"/g, '&quot;')}" placeholder="Проект">
         <div class="modal-buttons">
             <button id="saveEditBtn">💾 Сохранить</button>
             <button id="cancelEditBtn">Отмена</button>
@@ -609,18 +626,19 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
 async function importSchedule(rawText) {
     const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
     if (Object.keys(parsed).length === 0) {
-        alert("Не найдено дат для текущего месяца");
+        alert("❌ Не найдено дат для текущего месяца");
         return;
     }
     Object.assign(scheduleData, parsed);
-    saveToLocalCache();
-    await saveToCloud();
     renderCalendar();
-    alert(`Импортировано ${Object.keys(parsed).length} дней`);
+    await saveToCloud();
+    alert(`✅ Импортировано ${Object.keys(parsed).length} дней`);
 }
 
 // ========== ДРУГИЕ ФУНКЦИИ ==========
 async function resetCurrentMonth() {
+    if (!confirm(`Сбросить все данные для ${currentMonth+1}.${currentYear}?`)) return;
+    
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
         const key = getDateKey(currentYear, currentMonth, d);
@@ -632,9 +650,9 @@ async function resetCurrentMonth() {
             scheduleData[getDateKey(currentYear, currentMonth, d)] = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
         }
     }
-    saveToLocalCache();
-    await saveToCloud();
     renderCalendar();
+    await saveToCloud();
+    alert("✅ Данные сброшены");
 }
 
 function changeMonth(delta) {
@@ -672,23 +690,19 @@ function exportPDF() {
 const importModal = document.getElementById("importModal");
 document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
 document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
-document.getElementById("applyImportBtn").onclick = () => {
+document.getElementById("applyImportBtn").onclick = async () => {
     const text = document.getElementById("importText").value;
-    if (text.trim()) importSchedule(text);
+    if (text.trim()) await importSchedule(text);
     importModal.style.display = "none";
+    document.getElementById("importText").value = "";
 };
-document.getElementById("syncNowBtn").onclick = syncWithCloud;
+document.getElementById("refreshBtn").onclick = loadFromCloud;
 document.getElementById("resetToDefaultBtn").onclick = resetCurrentMonth;
 document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
 document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
 
-// Загрузка данных
-if (!loadFromLocalCache()) {
-    initDefaultApril();
-    saveToLocalCache();
-}
-renderCalendar();
-syncWithCloud(); // Автосинхронизация при загрузке
+// Загрузка данных из облака при старте
+loadFromCloud();
 </script>
 </body>
 </html>
