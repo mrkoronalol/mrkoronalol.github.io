@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Калькулятор ЗП — Лемана ПРО</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            padding: 24px;
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e293b;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 20px;
+        }
+
+        .period-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .period-input label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+
+        .period-input input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 1rem;
+        }
+
+        .period-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .rate-section {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e0e7ff 100%);
+            padding: 16px 20px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .rate-info {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .rate-label {
+            font-size: 1rem;
+            color: #4c1d95;
+            font-weight: 500;
+        }
+
+        .rate-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #4c1d95;
+        }
+
+        .rate-unit {
+            font-size: 0.9rem;
+            color: #6b21a8;
+        }
+
+        .edit-rate-btn {
+            background: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4c1d95;
+            cursor: pointer;
+        }
+
+        .days-grid {
+            margin-bottom: 24px;
+        }
+
+        .days-header {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1.5fr;
+            gap: 8px;
+            padding: 12px 8px;
+            background: #f1f5f9;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .day-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1.5fr;
+            gap: 8px;
+            padding: 12px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            align-items: center;
+        }
+
+        .day-name {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .day-date {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .hours-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .hours-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .day-total {
+            text-align: right;
+            font-weight: 600;
+            color: #4c1d95;
+        }
+
+        .summary-section {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 24px;
+            margin: 20px 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            color: white;
+        }
+
+        .summary-row.total {
+            border-top: 2px solid rgba(255,255,255,0.2);
+            margin-top: 8px;
+            padding-top: 16px;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .summary-label {
+            color: #94a3b8;
+        }
+
+        .summary-value {
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .history-section {
+            margin-top: 24px;
+        }
+
+        .history-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .history-title h3 {
+            margin: 0;
+            color: #1e293b;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: #f8fafc;
+            padding: 14px 16px;
+            border-radius: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: #e2e8f0;
+        }
+
+        .history-period {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .history-hours {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .history-amount {
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        .history-delete {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 32px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 16px; }
+            h1 { font-size: 1.5rem; }
+            .days-header { display: none; }
+            .day-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                padding: 16px 8px;
+            }
+            .day-total {
+                grid-column: 1 / -1;
+                text-align: left;
+                padding-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="index.html" class="back-btn">← Назад к календарю</a>
+            <h1>💰 Калькулятор</h1>
+        </div>
+        <div class="subtitle">Лемана ПРО — почасовой расчет</div>
+
+        <div class="period-selector">
+            <div class="period-input">
+                <label>📅 Начало периода</label>
+                <input type="date" id="startDate">
+            </div>
+            <div class="period-input">
+                <label>📅 Конец периода</label>
+                <input type="date" id="endDate">
+            </div>
+        </div>
+
+        <div class="rate-section">
+            <div class="rate-info">
+                <span class="rate-label">Ставка</span>
+                <span class="rate-value" id="hourlyRateDisplay">230</span>
+                <span class="rate-unit">₽/час</span>
+            </div>
+            <button class="edit-rate-btn" id="editRateBtn">✏️ Изменить</button>
+        </div>
+
+        <div class="days-grid">
+            <div class="days-header">
+                <span>День</span>
+                <span>Часы</span>
+                <span>Сумма</span>
+            </div>
+            <div id="daysContainer"></div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+            <button class="btn-secondary" style="flex:1; padding: 10px;" id="fillWeekdaysBtn">📋 Заполнить будни (8ч)</button>
+            <button class="btn-secondary" style="flex:1; padding: 10px;" id="clearHoursBtn">🧹 Очистить часы</button>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-row">
+                <span class="summary-label">Всего часов</span>
+                <span class="summary-value" id="totalHours">0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Рабочих дней</span>
+                <span class="summary-value" id="workedDays">0</span>
+            </div>
+            <div class="summary-row total">
+                <span class="summary-label">Итого к выплате</span>
+                <span class="summary-value" id="totalSalary">0 ₽</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="calculateBtn">🔄 Пересчитать</button>
+            <button class="btn btn-success" id="savePeriodBtn">💾 Сохранить период</button>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">
+                <h3>📚 История периодов</h3>
+                <button class="btn-secondary" style="padding: 8px 16px;" id="clearHistoryBtn">Очистить</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="empty-state">Нет сохраненных периодов</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="rateModal">
+        <div class="modal-content">
+            <h3>💰 Изменить ставку</h3>
+            <input type="number" id="newRateInput" placeholder="230" min="0" step="10" value="230">
+            <div class="modal-buttons">
+                <button class="btn-secondary" id="cancelRateBtn">Отмена</button>
+                <button class="btn-primary" id="saveRateBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let hourlyRate = 230;
+        let currentDays = [];
+        let periodHistory = [];
+        
+        const STORAGE_HISTORY_KEY = 'salary_history';
+        const STORAGE_RATE_KEY = 'hourly_rate';
+
+        function init() {
+            const savedRate = localStorage.getItem(STORAGE_RATE_KEY);
+            if (savedRate) hourlyRate = parseFloat(savedRate);
+            document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
+            
+            loadHistory();
+            
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 6);
+            
+            document.getElementById('startDate').valueAsDate = weekAgo;
+            document.getElementById('endDate').valueAsDate = today;
+            
+            generateDays();
+            bindEvents();
+        }
+
+        function bindEvents() {
+            document.getElementById('startDate').addEventListener('change', generateDays);
+            document.getElementById('endDate').addEventListener('change', generateDays);
+            document.getElementById('calculateBtn').addEventListener('click', calculateTotal);
+            document.getElementById('fillWeekdaysBtn').addEventListener('click', fillWeekdays);
+            document.getElementById('clearHoursBtn').addEventListener('click', clearAllHours);
+            document.getElementById('savePeriodBtn').addEventListener('click', savePeriod);
+            document.getElementById('editRateBtn').addEventListener('click', () => {
+                document.getElementById('newRateInput').value = hourlyRate;
+                document.getElementById('rateModal').style.display = 'flex';
+            });
+            document.getElementById('cancelRateBtn').addEventListener('click', () => {
+                document.getElementById('rateModal').style.display = 'none';
+            });
+            document.getElementById('saveRateBtn').addEventListener('click', saveNewRate);
+            document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+            
+            document.getElementById('rateModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('rateModal')) {
+                    document.getElementById('rateModal').style.display = 'none';
+                }
+            });
+        }
+
+        function generateDays() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            
+            if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
+                return;
+            }
+            
+            currentDays = [];
+            const container = document.getElementById('daysContainer');
+            container.innerHTML = '';
+            
+            const currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const dayOfWeek = currentDate.toLocaleDateString('ru-RU', { weekday: 'short' });
+                const dayOfMonth = currentDate.getDate();
+                
+                const dayData = {
+                    date: dateStr,
+                    dayName: dayOfWeek,
+                    dayNum: dayOfMonth,
+                    hours: 0
+                };
+                
+                currentDays.push(dayData);
+                
+                const row = document.createElement('div');
+                row.className = 'day-row';
+                row.dataset.date = dateStr;
+                
+                const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+                
+                row.innerHTML = `
+                    <div>
+                        <div class="day-name">${dayOfWeek}</div>
+                        <div class="day-date">${dayOfMonth} ${currentDate.toLocaleDateString('ru-RU', { month: 'short' })}</div>
+                        ${isWeekend ? '<span style="color:#ef4444; font-size:0.7rem;">вых</span>' : ''}
+                    </div>
+                    <div>
+                        <input type="number" 
+                               class="hours-input" 
+                               data-date="${dateStr}" 
+                               min="0" 
+                               max="24" 
+                               step="0.5" 
+                               value="0"
+                               placeholder="Часы">
+                    </div>
+                    <div class="day-total" data-total="${dateStr}">0 ₽</div>
+                `;
+                
+                container.appendChild(row);
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            document.querySelectorAll('.hours-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const date = e.target.dataset.date;
+                    const hours = parseFloat(e.target.value) || 0;
+                    const day = currentDays.find(d => d.date === date);
+                    if (day) day.hours = hours;
+                    
+                    updateDayTotal(date, hours);
+                    calculateTotal();
+                });
+            });
+            
+            calculateTotal();
+        }
+
+        function updateDayTotal(date, hours) {
+            const totalEl = document.querySelector(`[data-total="${date}"]`);
+            if (totalEl) {
+                const amount = hours * hourlyRate;
+                totalEl.textContent = `${Math.round(amount)} ₽`;
+            }
+        }
+
+        function calculateTotal() {
+            let totalHours = 0;
+            let workedDays = 0;
+            
+            currentDays.forEach(day => {
+                const hours = day.hours || 0;
+                if (hours > 0) {
+                    totalHours += hours;
+                    workedDays++;
+                }
+            });
+            
+            const totalSalary = totalHours * hourlyRate;
+            
+            document.getElementById('totalHours').textContent = totalHours.toFixed(1);
+            document.getElementById('workedDays').textContent = workedDays;
+            document.getElementById('totalSalary').textContent = `${Math.round(totalSalary).toLocaleString()} ₽`;
+            
+            return { totalHours, workedDays, totalSalary };
+        }
+
+        function fillWeekdays() {
+            currentDays.forEach(day => {
+                const date = new Date(day.date);
+                const dayOfWeek = date.getDay();
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    day.hours = 8;
+                }
+            });
+            
+            currentDays.forEach(day => {
+                const input = document.querySelector(`[data-date="${day.date}"]`);
+                if (input) {
+                    input.value = day.hours;
+                    updateDayTotal(day.date, day.hours);
+                }
+            });
+            
+            calculateTotal();
+        }
+
+        function clearAllHours() {
+            currentDays.forEach(day => day.hours = 0);
+            
+            document.querySelectorAll('.hours-input').forEach(input => {
+                input.value = 0;
+                updateDayTotal(input.dataset.date, 0);
+            });
+            
+            calculateTotal();
+        }
+
+        function saveNewRate() {
+            const newRate = parseFloat(document.getElementById('newRateInput').value);
+            if (newRate && newRate > 0) {
+                hourlyRate = newRate;
+                localStorage.setItem(STORAGE_RATE_KEY, hourlyRate);
+                document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
+                
+                currentDays.forEach(day => {
+                    updateDayTotal(day.date, day.hours);
+                });
+                calculateTotal();
+            }
+            document.getElementById('rateModal').style.display = 'none';
+        }
+
+        function savePeriod() {
+            const stats = calculateTotal();
+            
+            if (stats.totalHours === 0) {
+                alert('Нет отработанных часов для сохранения');
+                return;
+            }
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            const period = {
+                id: Date.now(),
+                startDate,
+                endDate,
+                days: currentDays.map(d => ({ date: d.date, hours: d.hours })),
+                totalHours: stats.totalHours,
+                workedDays: stats.workedDays,
+                totalSalary: stats.totalSalary,
+                hourlyRate: hourlyRate,
+                savedAt: new Date().toISOString()
+            };
+            
+            periodHistory.unshift(period);
+            
+            if (periodHistory.length > 20) {
+                periodHistory = periodHistory.slice(0, 20);
+            }
+            
+            saveHistory();
+            renderHistory();
+            
+            alert(`✅ Период сохранен!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+        }
+
+        function loadHistory() {
+            const saved = localStorage.getItem(STORAGE_HISTORY_KEY);
+            if (saved) {
+                try {
+                    periodHistory = JSON.parse(saved);
+                } catch (e) {
+                    periodHistory = [];
+                }
+            }
+            renderHistory();
+        }
+
+        function saveHistory() {
+            localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(periodHistory));
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            
+            if (periodHistory.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нет сохраненных периодов</div>';
+                return;
+            }
+            
+            container.innerHTML = periodHistory.map(period => {
+                const start = new Date(period.startDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                const end = new Date(period.endDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                
+                return `
+                    <div class="history-item" data-id="${period.id}">
+                        <div style="flex:1;">
+                            <div class="history-period">${start} — ${end}</div>
+                            <div class="history-hours">${period.totalHours.toFixed(1)} ч · ${period.workedDays} дн · ${period.hourlyRate}₽/ч</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="history-amount">${Math.round(period.totalSalary).toLocaleString()} ₽</span>
+                            <button class="history-delete" data-id="${period.id}">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('history-delete')) return;
+                    const id = parseInt(item.dataset.id);
+                    loadPeriod(id);
+                });
+            });
+            
+            container.querySelectorAll('.history-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(btn.dataset.id);
+                    deletePeriod(id);
+                });
+            });
+        }
+
+        function loadPeriod(id) {
+            const period = periodHistory.find(p => p.id === id);
+            if (!period) return;
+            
+            if (!confirm(`Загрузить период ${period.startDate} — ${period.endDate}?\nТекущие данные будут заменены.`)) {
+                return;
+            }
+            
+            hourlyRate = period.hourlyRate;
+            localStorage.setItem(STORAGE_RATE_KEY, hourlyRate);
+            document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
+            
+            document.getElementById('startDate').value = period.startDate;
+            document.getElementById('endDate').value = period.endDate;
+            
+            generateDays();
+            
+            period.days.forEach(savedDay => {
+                const day = currentDays.find(d => d.date === savedDay.date);
+                if (day) {
+                    day.hours = savedDay.hours;
+                    const input = document.querySelector(`[data-date="${savedDay.date}"]`);
+                    if (input) {
+                        input.value = savedDay.hours;
+                        updateDayTotal(savedDay.date, savedDay.hours);
+                    }
+                }
+            });
+            
+            calculateTotal();
+        }
+
+        function deletePeriod(id) {
+            if (!confirm('Удалить этот период из истории?')) return;
+            
+            periodHistory = periodHistory.filter(p => p.id !== id);
+            saveHistory();
+            renderHistory();
+        }
+
+        function clearHistory() {
+            if (!confirm('Очистить всю историю?')) return;
+            
+            periodHistory = [];
+            saveHistory();
+            renderHistory();
+        }
+
+        init();
+    </script>
+</body>
+</html>
