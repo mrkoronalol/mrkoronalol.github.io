@@ -459,6 +459,7 @@ let currentMonth = 3;
 let scheduleData = {};
 let isLoading = false;
 let isAuthenticated = false;
+let isDataLoaded = false; // Флаг, чтобы не создавать дефолтные данные повторно
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 
 // ========== УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ ==========
@@ -499,15 +500,20 @@ async function loadFromCloud() {
         const response = await fetch(`${SCRIPT_URL}?action=load&t=${Date.now()}`);
         const cloudData = await response.json();
         
-        if (cloudData && Object.keys(cloudData).length > 0) {
+        // Проверяем, есть ли данные в облаке
+        const hasCloudData = cloudData && Object.keys(cloudData).length > 0;
+        
+        if (hasCloudData) {
+            // Данные есть в облаке - загружаем их
             scheduleData = cloudData;
             statusDiv.className = "sync-status success";
-            statusDiv.innerHTML = "✅ Данные загружены";
+            statusDiv.innerHTML = "✅ Данные загружены из облака";
             setTimeout(() => {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
+            isDataLoaded = true;
         } else {
-            // Первый вход - создаём дефолтные данные
+            // Облако пустое - это первый вход когда-либо
             statusDiv.innerHTML = "📝 Создание календаря...";
             initDefaultApril();
             await saveToCloud();
@@ -516,17 +522,19 @@ async function loadFromCloud() {
             setTimeout(() => {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
+            isDataLoaded = true;
         }
         
         renderCalendar();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
         statusDiv.className = "sync-status error";
-        statusDiv.innerHTML = "❌ Ошибка подключения";
+        statusDiv.innerHTML = "❌ Ошибка подключения к облаку";
         
-        // Показываем заглушку
-        initDefaultApril();
-        renderCalendar();
+        // Только если нет данных и это не загрузка, показываем ошибку
+        if (!isDataLoaded) {
+            alert("Не удалось подключиться к облачному хранилищу. Проверьте интернет-соединение.");
+        }
     } finally {
         isLoading = false;
     }
@@ -534,8 +542,9 @@ async function loadFromCloud() {
 
 // ========== СОХРАНЕНИЕ В ОБЛАКО ==========
 async function saveToCloud() {
+    if (!isDataLoaded) return false;
+    
     const statusDiv = document.getElementById("syncStatus");
-    const originalText = statusDiv.innerHTML;
     statusDiv.className = "sync-status loading";
     statusDiv.innerHTML = "💾 Сохранение...";
     
@@ -833,6 +842,7 @@ document.getElementById("passwordInput").onkeypress = (e) => {
 document.getElementById("logoutBtn").onclick = () => {
     clearAuthFromStorage();
     isAuthenticated = false;
+    isDataLoaded = false;
     scheduleData = {};
     showLoginScreen();
 };
