@@ -33,7 +33,6 @@ body {
     transition: all 0.2s;
 }
 
-/* шапка + управление - адаптив */
 .header-flex {
     display: flex;
     flex-wrap: wrap;
@@ -133,36 +132,11 @@ button:active {
     background: #1e5940;
 }
 
-.import-area {
-    background: #f8fafc;
-    border-radius: 24px;
-    padding: 12px 14px;
-    margin-bottom: 18px;
-    border: 1px solid #e2e8f0;
+/* Импорт график — без меню, просто невидимый элемент */
+.hidden-import {
     display: none;
-    flex-direction: column;
-    gap: 12px;
 }
 
-.import-area textarea {
-    width: 100%;
-    border-radius: 20px;
-    border: 1px solid #cbd5e1;
-    padding: 12px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    background: white;
-    resize: vertical;
-    font-size: 12px;
-}
-
-.import-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-/* сетка дней недели и календаря - адаптивная, фикс совпадения */
 .weekday-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -187,7 +161,6 @@ button:active {
     gap: 6px;
 }
 
-/* ячейки дня — адаптив, минимальная высота, текст не вылазит */
 .day {
     padding: 8px 4px;
     border-radius: 16px;
@@ -221,7 +194,6 @@ button:active {
     font-size: 0.85rem;
 }
 
-/* типы дней */
 .work { background: linear-gradient(145deg, #d9e9ff, #ecf5ff); border-left: 4px solid #3b82f6; }
 .off { background: #fef9e3; border-left: 4px solid #fbbf24; }
 .vacation { background: #e0f2e9; border-left: 4px solid #2ecc71; }
@@ -245,7 +217,6 @@ button:active {
     overflow: hidden;
 }
 
-/* модальное окно (адаптив) */
 .modal {
     position: fixed;
     inset: 0;
@@ -294,7 +265,6 @@ button:active {
     padding: 8px 20px;
 }
 
-/* пустые ячейки */
 .empty-cell {
     background: #fafcff;
     opacity: 0.5;
@@ -307,82 +277,25 @@ button:active {
     transform: none;
 }
 
-/* медиа запросы для мобильных */
 @media (max-width: 600px) {
-    body {
-        padding: 8px;
-    }
-    .container {
-        padding: 12px 12px 20px 12px;
-        border-radius: 24px;
-    }
-    .weekday-header {
-        gap: 4px;
-        padding: 6px 0;
-    }
-    .weekday-header span {
-        font-size: 0.65rem;
-    }
-    .calendar {
-        gap: 5px;
-    }
-    .day {
-        min-height: 72px;
-        padding: 6px 3px;
-    }
-    .date {
-        font-size: 0.75rem;
-        width: 28px;
-        padding: 1px 0;
-        margin-bottom: 4px;
-    }
-    .day-text {
-        font-size: 0.6rem;
-        line-height: 1.2;
-    }
-    h1 {
-        font-size: 1.25rem;
-    }
-    .month-nav span {
-        font-size: 0.85rem;
-        min-width: 90px;
-    }
-    .month-nav button {
-        width: 32px;
-        height: 32px;
-        font-size: 1rem;
-    }
-    button {
-        padding: 6px 12px;
-        font-size: 0.7rem;
-    }
-    .modal-content {
-        padding: 18px;
-        max-width: 300px;
-    }
+    body { padding: 8px; }
+    .container { padding: 12px 12px 20px 12px; border-radius: 24px; }
+    .weekday-header { gap: 4px; padding: 6px 0; }
+    .weekday-header span { font-size: 0.65rem; }
+    .calendar { gap: 5px; }
+    .day { min-height: 72px; padding: 6px 3px; }
+    .date { font-size: 0.75rem; width: 28px; margin-bottom: 4px; }
+    .day-text { font-size: 0.6rem; line-height: 1.2; }
+    h1 { font-size: 1.25rem; }
+    .month-nav span { font-size: 0.85rem; min-width: 90px; }
+    .month-nav button { width: 32px; height: 32px; font-size: 1rem; }
+    button { padding: 6px 12px; font-size: 0.7rem; }
 }
 
 @media (max-width: 450px) {
-    .day {
-        min-height: 68px;
-    }
-    .day-text {
-        font-size: 0.55rem;
-        -webkit-line-clamp: 2;
-    }
-    .calendar {
-        gap: 4px;
-    }
-    .weekday-header {
-        gap: 3px;
-    }
-    .header-flex {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .month-nav {
-        align-self: center;
-    }
+    .day { min-height: 68px; }
+    .day-text { font-size: 0.55rem; -webkit-line-clamp: 2; }
+    .calendar { gap: 4px; }
 }
 </style>
 </head>
@@ -402,27 +315,17 @@ button:active {
         <div class="btn-group">
             <button onclick="exportPNG()">📸 PNG</button>
             <button onclick="exportPDF()">📄 PDF</button>
-            <button id="showImportBtn" class="btn-import">📥 Вставить расписание</button>
+            <!-- Кнопка импорта графика (скрытая, но функциональная) -->
+            <button id="hiddenImportBtn" class="btn-import" style="background: #2b6e4f;">📥 Импорт графика</button>
         </div>
         <div class="btn-group">
             <button id="resetToDefaultBtn">⟳ Сброс</button>
         </div>
     </div>
 
-    <div id="importPanel" class="import-area">
-        <textarea id="scheduleRawText" rows="3" placeholder="Вставьте расписание как в примере:
-01.04.2026
-02:00 - 08:00
-6
-Лемана ПРО_B2C_голос_вход
-02.04.2026
-Выходной
-Лемана ПРО_B2C_голос_вход
-..."></textarea>
-        <div class="import-buttons">
-            <button id="applyImportBtn" style="background:#2b6e4f;">📌 Применить</button>
-            <button id="closeImportBtn" style="background:#94a3b8;">Отмена</button>
-        </div>
+    <!-- Скрытый элемент для вставки расписания (без меню, только по требованию) -->
+    <div id="importPanel" class="hidden-import">
+        <textarea id="scheduleRawText" rows="3" placeholder="Вставьте расписание..."></textarea>
     </div>
 
     <div class="weekday-header">
@@ -431,7 +334,6 @@ button:active {
     <div class="calendar" id="calendar"></div>
 </div>
 
-<!-- модальное окно редактирования -->
 <div class="modal" id="editModal">
     <div class="modal-content" id="editModalContent"></div>
 </div>
@@ -440,10 +342,43 @@ button:active {
 // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
 let currentYear = 2026;
 let currentMonth = 3;     // 3 = апрель
-let scheduleData = {};     // ключ "YYYY-M-D"
+let scheduleData = {};
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
+const STORAGE_KEY = "workCalendarData";
 
-// вспомогательные функции
+// ========== РАБОТА С LOCALSTORAGE ==========
+function saveToLocalStorage() {
+    try {
+        const toSave = {
+            data: scheduleData,
+            version: "1.0",
+            timestamp: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        console.log("✅ Данные сохранены");
+    } catch(e) {
+        console.warn("Ошибка сохранения:", e);
+    }
+}
+
+function loadFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.data && typeof parsed.data === 'object') {
+                scheduleData = parsed.data;
+                console.log("📦 Данные загружены из localStorage");
+                return true;
+            }
+        }
+    } catch(e) {
+        console.warn("Ошибка загрузки:", e);
+    }
+    return false;
+}
+
+// ========== РАБОТА С ДАННЫМИ ==========
 function getDateKey(year, month, day) {
     return `${year}-${month + 1}-${day}`;
 }
@@ -455,12 +390,12 @@ function setDayData(year, month, day, type, shiftText, project) {
         shiftText: shiftText || (type === "work" ? "02:00–08:00" : ""), 
         project: project || DEFAULT_PROJECT 
     };
+    saveToLocalStorage();
 }
 
 function getDayData(year, month, day) {
     const key = getDateKey(year, month, day);
     if (scheduleData[key]) return scheduleData[key];
-    // авто-инициализация рабочим днём по умолчанию
     return { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
 }
 
@@ -476,25 +411,27 @@ function initDefaultApril() {
     for (let d = 1; d <= 30; d++) {
         let type = defaultTypes[d];
         let shift = (type === "work") ? "02:00–08:00" : "";
-        setDayData(2026, 3, d, type, shift, DEFAULT_PROJECT);
+        const key = getDateKey(2026, 3, d);
+        if (!scheduleData[key]) {
+            scheduleData[key] = { type, shiftText: shift, project: DEFAULT_PROJECT };
+        }
     }
 }
 
-// ========== ОТРИСОВКА КАЛЕНДАРЯ (адаптивная, строгое совпадение) ==========
+// ========== ОТРИСОВКА КАЛЕНДАРЯ ==========
 function renderCalendar() {
     const calendarDiv = document.getElementById("calendar");
     if (!calendarDiv) return;
     calendarDiv.innerHTML = "";
     
     const firstDay = new Date(currentYear, currentMonth, 1);
-    let startWeekday = firstDay.getDay(); // 0 вс
+    let startWeekday = firstDay.getDay();
     let startOffset = (startWeekday === 0 ? 6 : startWeekday - 1);
     
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const todayDate = new Date();
     const isCurrentMonthView = (todayDate.getFullYear() === currentYear && todayDate.getMonth() === currentMonth);
     
-    // пустые ячейки до начала месяца
     for (let i = 0; i < startOffset; i++) {
         const emptyDiv = document.createElement("div");
         emptyDiv.className = "day empty-cell";
@@ -505,7 +442,6 @@ function renderCalendar() {
         calendarDiv.appendChild(emptyDiv);
     }
     
-    // дни месяца
     for (let d = 1; d <= daysInMonth; d++) {
         const dayData = getDayData(currentYear, currentMonth, d);
         const type = dayData.type;
@@ -519,10 +455,8 @@ function renderCalendar() {
         else if (type === "off") extraInfo = `🌿 ${shiftDisplay}`;
         else extraInfo = `🏖️ ${shiftDisplay}`;
         
-        // добавляем проект (обрезаем для мобильных)
         const projectShort = dayData.project && dayData.project.length > 18 ? dayData.project.substring(0, 16) + ".." : dayData.project;
         if (projectShort && projectShort !== DEFAULT_PROJECT) extraInfo += ` · ${projectShort}`;
-        else if (projectShort) extraInfo += ` · ${projectShort}`;
         
         const dayDiv = document.createElement("div");
         dayDiv.className = `day ${type}`;
@@ -539,7 +473,6 @@ function renderCalendar() {
         calendarDiv.appendChild(dayDiv);
     }
     
-    // заполняем пустые ячейки в конце сетки, чтобы сохранить сетку 7x6
     const totalCells = startOffset + daysInMonth;
     const remainingCells = (7 - (totalCells % 7)) % 7;
     for (let i = 0; i < remainingCells; i++) {
@@ -552,12 +485,11 @@ function renderCalendar() {
         calendarDiv.appendChild(emptyDiv);
     }
     
-    // обновить название месяца
     const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     document.getElementById("monthYearLabel").innerHTML = `${monthNames[currentMonth]} ${currentYear}`;
 }
 
-// ========== РЕДАКТИРОВАНИЕ ЧЕРЕЗ POPUP ==========
+// ========== РЕДАКТИРОВАНИЕ ==========
 function openEditModal(day) {
     const existing = getDayData(currentYear, currentMonth, day);
     const currentType = existing.type;
@@ -615,10 +547,10 @@ function closeEditModal() {
     document.getElementById("editModal").style.display = "none";
 }
 
-// ========== ПАРСИНГ ТЕКСТОВОГО РАСПИСАНИЯ ==========
+// ========== ПАРСИНГ ГРАФИКА (только данные) ==========
 function parseScheduleFromText(rawText, targetYear, targetMonth) {
     const lines = rawText.split(/\r?\n/);
-    const updates = new Map(); // key -> data
+    const updates = new Map();
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
         if (line === "") continue;
@@ -628,15 +560,13 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
         let month = parseInt(dateMatch[2], 10);
         let year = parseInt(dateMatch[3], 10);
         if (year < 100) year = 2000 + year;
-        if (year !== targetYear || month !== (targetMonth + 1)) {
-            continue; // пропускаем даты не текущего месяца
-        }
+        if (year !== targetYear || month !== (targetMonth + 1)) continue;
+        
         i++;
         while (i < lines.length && lines[i].trim() === "") i++;
         if (i >= lines.length) break;
         let shiftDesc = lines[i].trim();
         i++;
-        // пропускаем строку с часами (цифры)
         while (i < lines.length && lines[i].trim() === "") i++;
         if (i < lines.length && /^\d+$/.test(lines[i].trim())) {
             i++;
@@ -647,6 +577,7 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
             projectName = lines[i].trim();
             i++;
         }
+        
         let type = "work";
         let shiftText = "";
         const lowerDesc = shiftDesc.toLowerCase();
@@ -667,35 +598,47 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
     return updates;
 }
 
-function importScheduleToCurrentMonth(rawText) {
-    const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
-    if (parsed.size === 0) {
-        alert("Не найдено подходящих дат для текущего месяца. Проверьте формат: ДД.ММ.ГГГГ");
+// Импорт графика через всплывающий prompt (без лишнего меню)
+function importScheduleViaPrompt() {
+    const rawText = prompt("📋 Вставьте расписание в формате:\n\n01.04.2026\n02:00 - 08:00\n6\nЛемана ПРО_B2C_голос_вход\n\n(можно скопировать целиком)");
+    if (!rawText || rawText.trim() === "") {
+        alert("Импорт отменён");
         return;
     }
+    
+    const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
+    if (parsed.size === 0) {
+        alert("❌ Не найдено подходящих дат для текущего месяца.\nПроверьте формат: ДД.ММ.ГГГГ");
+        return;
+    }
+    
     for (let [key, val] of parsed.entries()) {
         scheduleData[key] = val;
     }
+    saveToLocalStorage();
     renderCalendar();
-    closeImportPanel();
-    alert(`✅ Импорт завершён! Обновлено ${parsed.size} дней (${currentMonth+1}.${currentYear})`);
+    alert(`✅ Импорт графика завершён!\nОбновлено ${parsed.size} дней (${currentMonth+1}.${currentYear})`);
 }
 
-// сброс для текущего месяца
 function resetCurrentMonthToDefault() {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     if (currentYear === 2026 && currentMonth === 3) {
+        for (let d = 1; d <= 30; d++) {
+            const key = getDateKey(2026, 3, d);
+            delete scheduleData[key];
+        }
         initDefaultApril();
     } else {
         for (let d = 1; d <= daysInMonth; d++) {
-            setDayData(currentYear, currentMonth, d, "work", "02:00–08:00", DEFAULT_PROJECT);
+            const key = getDateKey(currentYear, currentMonth, d);
+            scheduleData[key] = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
         }
     }
+    saveToLocalStorage();
     renderCalendar();
     alert(`Календарь ${currentMonth+1}.${currentYear} сброшен к стандартным рабочим дням`);
 }
 
-// смена месяца
 function changeMonth(delta) {
     let newMonth = currentMonth + delta;
     let newYear = currentYear;
@@ -729,43 +672,32 @@ function exportPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgWidth = 210;
-        const pageHeight = 297;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         pdf.save(`calendar_${currentYear}_${currentMonth+1}.pdf`);
     }).catch(() => alert("Ошибка PDF"));
 }
 
-// UI панель импорта
-const importPanel = document.getElementById("importPanel");
-function closeImportPanel() {
-    importPanel.style.display = "none";
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+const loaded = loadFromLocalStorage();
+if (!loaded || Object.keys(scheduleData).length === 0) {
+    initDefaultApril();
+    saveToLocalStorage();
 }
-document.getElementById("showImportBtn").onclick = () => {
-    importPanel.style.display = "flex";
-};
-document.getElementById("closeImportBtn").onclick = closeImportPanel;
-document.getElementById("applyImportBtn").onclick = () => {
-    const rawText = document.getElementById("scheduleRawText").value;
-    if (!rawText.trim()) {
-        alert("Вставьте текст с расписанием");
-        return;
-    }
-    importScheduleToCurrentMonth(rawText);
+
+// Обработчики (без лишних панелей)
+document.getElementById("hiddenImportBtn").onclick = () => {
+    importScheduleViaPrompt();
 };
 document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonthToDefault();
 document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
 document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
 
-// закрытие модалки по клику на фон
 window.onclick = (e) => {
     const modalElem = document.getElementById("editModal");
     if (e.target === modalElem) closeEditModal();
 };
 
-// ========== СТАРТ ==========
-initDefaultApril();
 renderCalendar();
 </script>
 </body>
