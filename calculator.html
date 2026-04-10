@@ -254,6 +254,13 @@
             color: white;
         }
 
+        .summary-row.tax-row {
+            color: #f87171;
+            border-bottom: 1px solid rgba(248, 113, 113, 0.3);
+            padding-bottom: 12px;
+            margin-bottom: 4px;
+        }
+
         .summary-row.total {
             border-top: 2px solid rgba(255,255,255,0.2);
             margin-top: 8px;
@@ -474,7 +481,7 @@
             <h1>💰 Калькулятор ЗП</h1>
         </div>
         <div class="subtitle">
-            <span>Лемана ПРО — расчёт по часам</span>
+            <span>Лемана ПРО — расчёт с НДФЛ 13%</span>
             <span class="sync-badge" id="syncBadge">⚡ Синхронизация с Gist</span>
         </div>
 
@@ -523,8 +530,16 @@
                 <span class="summary-label">Рабочих дней</span>
                 <span class="summary-value" id="workedDays">0</span>
             </div>
+            <div class="summary-row">
+                <span class="summary-label">Начислено (гросс)</span>
+                <span class="summary-value" id="grossSalary">0 ₽</span>
+            </div>
+            <div class="summary-row tax-row">
+                <span class="summary-label">НДФЛ (13%)</span>
+                <span class="summary-value" id="taxAmount">0 ₽</span>
+            </div>
             <div class="summary-row total">
-                <span class="summary-label">Итого к выплате</span>
+                <span class="summary-label">К выплате (нетто)</span>
                 <span class="summary-value" id="totalSalary">0 ₽</span>
             </div>
         </div>
@@ -579,6 +594,7 @@
         let calendarData = {};
 
         const STORAGE_RATE_KEY = 'hourly_rate';
+        const NDFL_RATE = 0.13; // 13% НДФЛ
 
         // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
         function showLoading(text = 'Загрузка...') {
@@ -621,12 +637,11 @@
                 const endMin = parseInt(timeMatch[4]);
                 
                 let hours = (endHour + endMin/60) - (startHour + startMin/60);
-                if (hours < 0) hours += 24; // Если смена переходит через полночь
+                if (hours < 0) hours += 24;
                 
                 return hours;
             }
             
-            // Пробуем найти просто числа
             const numbersMatch = shiftText.match(/(\d+)/g);
             if (numbersMatch && numbersMatch.length >= 2) {
                 const start = parseInt(numbersMatch[0]);
@@ -636,7 +651,7 @@
                 return hours;
             }
             
-            return 8; // По умолчанию 8 часов
+            return 8;
         }
 
         // ========== РАБОТА С GITHUB GIST ==========
@@ -757,46 +772,55 @@
                 const calendarEntry = data[dateKey];
                 
                 if (calendarEntry) {
-                    // Обновляем тип дня
                     day.type = calendarEntry.type || 'work';
                     day.shiftText = calendarEntry.shiftText || '';
                     
-                    // Если рабочий день - считаем часы
                     if (calendarEntry.type === 'work') {
-                        day.hours = parseShiftHours(calendarEntry.shiftText);
+                        if (calendarEntry.shiftText) {
+                            day.hours = parseShiftHours(calendarEntry.shiftText);
+                        } else {
+                            day.hours = 8;
+                        }
                         loadedCount++;
                     } else {
-                        day.hours = 0; // Выходной или отпуск
+                        day.hours = 0;
+                    }
+                } else {
+                    if (day.type === 'work') {
+                        day.hours = 8;
+                        loadedCount++;
+                    }
+                }
+                
+                const row = document.querySelector(`.day-row[data-date="${day.date}"]`);
+                if (row) {
+                    const typeSpan = row.querySelector('.day-type');
+                    const shiftSpan = row.querySelector('.shift-info');
+                    
+                    if (typeSpan) {
+                        typeSpan.className = 'day-type';
+                        if (day.type === 'work') {
+                            typeSpan.classList.add('type-work');
+                            typeSpan.textContent = 'Работа';
+                        } else if (day.type === 'off') {
+                            typeSpan.classList.add('type-off');
+                            typeSpan.textContent = 'Выходной';
+                        } else if (day.type === 'vacation') {
+                            typeSpan.classList.add('type-vacation');
+                            typeSpan.textContent = 'Отпуск';
+                        }
                     }
                     
-                    // Обновляем отображение в строке
-                    const row = document.querySelector(`.day-row[data-date="${day.date}"]`);
-                    if (row) {
-                        const typeSpan = row.querySelector('.day-type');
-                        const shiftSpan = row.querySelector('.shift-info');
-                        
-                        if (typeSpan) {
-                            typeSpan.className = 'day-type';
-                            if (day.type === 'work') {
-                                typeSpan.classList.add('type-work');
-                                typeSpan.textContent = 'Работа';
-                            } else if (day.type === 'off') {
-                                typeSpan.classList.add('type-off');
-                                typeSpan.textContent = 'Выходной';
-                            } else if (day.type === 'vacation') {
-                                typeSpan.classList.add('type-vacation');
-                                typeSpan.textContent = 'Отпуск';
-                            }
-                        }
-                        
-                        if (shiftSpan) {
-                            shiftSpan.textContent = day.shiftText || (day.type === 'work' ? '8 ч' : '—');
+                    if (shiftSpan) {
+                        if (day.type === 'work') {
+                            shiftSpan.textContent = day.shiftText || '8 ч';
+                        } else {
+                            shiftSpan.textContent = '—';
                         }
                     }
                 }
             });
 
-            // Обновляем инпуты и суммы
             currentDays.forEach(day => {
                 const input = document.querySelector(`[data-date="${day.date}"]`);
                 if (input) {
@@ -831,7 +855,6 @@
                 const dayOfMonth = currentDate.getDate();
                 const monthShort = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
                 
-                // Получаем тип дня из уже загруженных данных календаря
                 let dayType = 'work';
                 let typeClass = 'type-work';
                 let typeText = 'Работа';
@@ -847,6 +870,13 @@
                     } else if (dayType === 'vacation') {
                         typeClass = 'type-vacation';
                         typeText = 'Отпуск';
+                    }
+                } else {
+                    const dayOfWeekNum = currentDate.getDay();
+                    if (dayOfWeekNum === 0 || dayOfWeekNum === 6) {
+                        dayType = 'off';
+                        typeClass = 'type-off';
+                        typeText = 'Выходной';
                     }
                 }
                 
@@ -894,7 +924,6 @@
                 currentDate.setDate(currentDate.getDate() + 1);
             }
             
-            // Привязываем события к инпутам
             document.querySelectorAll('.hours-input').forEach(input => {
                 input.addEventListener('input', (e) => {
                     const date = e.target.dataset.date;
@@ -908,6 +937,32 @@
             });
             
             calculateTotal();
+            
+            if (GIST_ID && Object.keys(calendarData).length > 0) {
+                setTimeout(() => {
+                    currentDays.forEach(day => {
+                        const dateKey = day.date;
+                        const calendarEntry = calendarData[dateKey];
+                        
+                        if (calendarEntry && calendarEntry.type === 'work') {
+                            if (calendarEntry.shiftText) {
+                                day.hours = parseShiftHours(calendarEntry.shiftText);
+                            } else {
+                                day.hours = 8;
+                            }
+                        } else if (!calendarEntry && day.type === 'work') {
+                            day.hours = 8;
+                        }
+                        
+                        const input = document.querySelector(`[data-date="${day.date}"]`);
+                        if (input) {
+                            input.value = day.hours;
+                            updateDayTotal(day.date, day.hours);
+                        }
+                    });
+                    calculateTotal();
+                }, 50);
+            }
         }
 
         function updateDayTotal(date, hours) {
@@ -930,13 +985,17 @@
                 }
             });
             
-            const totalSalary = totalHours * hourlyRate;
+            const grossSalary = totalHours * hourlyRate;
+            const taxAmount = grossSalary * NDFL_RATE;
+            const netSalary = grossSalary - taxAmount;
             
             document.getElementById('totalHours').textContent = totalHours.toFixed(1);
             document.getElementById('workedDays').textContent = workedDays;
-            document.getElementById('totalSalary').textContent = `${Math.round(totalSalary).toLocaleString()} ₽`;
+            document.getElementById('grossSalary').textContent = `${Math.round(grossSalary).toLocaleString()} ₽`;
+            document.getElementById('taxAmount').textContent = `${Math.round(taxAmount).toLocaleString()} ₽`;
+            document.getElementById('totalSalary').textContent = `${Math.round(netSalary).toLocaleString()} ₽`;
             
-            return { totalHours, workedDays, totalSalary };
+            return { totalHours, workedDays, grossSalary, taxAmount, netSalary };
         }
 
         // ========== СОХРАНЕНИЕ ПЕРИОДА ==========
@@ -963,7 +1022,9 @@
                 })),
                 totalHours: stats.totalHours,
                 workedDays: stats.workedDays,
-                totalSalary: stats.totalSalary,
+                grossSalary: stats.grossSalary,
+                taxAmount: stats.taxAmount,
+                netSalary: stats.netSalary,
                 hourlyRate: hourlyRate,
                 savedAt: new Date().toISOString()
             };
@@ -982,12 +1043,12 @@
                 hideLoading();
                 
                 if (success) {
-                    alert(`✅ Период сохранен в Gist!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+                    alert(`✅ Период сохранен в Gist!\n\nНачислено: ${Math.round(stats.grossSalary).toLocaleString()} ₽\nНДФЛ (13%): ${Math.round(stats.taxAmount).toLocaleString()} ₽\nК выплате: ${Math.round(stats.netSalary).toLocaleString()} ₽`);
                 } else {
-                    alert(`⚠️ Сохранено локально\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+                    alert(`⚠️ Сохранено локально\n\nК выплате: ${Math.round(stats.netSalary).toLocaleString()} ₽`);
                 }
             } else {
-                alert(`✅ Период сохранен локально!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+                alert(`✅ Период сохранен локально!\n\nК выплате: ${Math.round(stats.netSalary).toLocaleString()} ₽`);
             }
         }
 
@@ -1016,6 +1077,8 @@
                 const start = new Date(period.startDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                 const end = new Date(period.endDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                 
+                const netSalary = period.netSalary || period.totalSalary || 0;
+                
                 return `
                     <div class="history-item" data-id="${period.id}">
                         <div style="flex:1;">
@@ -1023,7 +1086,7 @@
                             <div class="history-hours">${period.totalHours.toFixed(1)} ч · ${period.workedDays} дн · ${period.hourlyRate}₽/ч</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="history-amount">${Math.round(period.totalSalary).toLocaleString()} ₽</span>
+                            <span class="history-amount">${Math.round(netSalary).toLocaleString()} ₽</span>
                             <button class="history-delete" data-id="${period.id}">🗑️</button>
                         </div>
                     </div>
@@ -1064,19 +1127,20 @@
             
             generateDays();
             
-            period.days.forEach(savedDay => {
-                const day = currentDays.find(d => d.date === savedDay.date);
-                if (day) {
-                    day.hours = savedDay.hours;
-                    const input = document.querySelector(`[data-date="${savedDay.date}"]`);
-                    if (input) {
-                        input.value = savedDay.hours;
-                        updateDayTotal(savedDay.date, savedDay.hours);
+            setTimeout(() => {
+                period.days.forEach(savedDay => {
+                    const day = currentDays.find(d => d.date === savedDay.date);
+                    if (day) {
+                        day.hours = savedDay.hours;
+                        const input = document.querySelector(`[data-date="${savedDay.date}"]`);
+                        if (input) {
+                            input.value = savedDay.hours;
+                            updateDayTotal(savedDay.date, savedDay.hours);
+                        }
                     }
-                }
-            });
-            
-            calculateTotal();
+                });
+                calculateTotal();
+            }, 100);
         }
 
         async function deletePeriod(id) {
