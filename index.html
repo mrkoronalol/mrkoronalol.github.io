@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Календарь сотрудника — Лемана ПРО</title>
 
-<!-- html2canvas + jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+/* ... (стили остаются без изменений) ... */
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -472,7 +472,7 @@ button:disabled {
 
 <script>
 // ========== НАСТРОЙКИ ==========
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrLU_EU2-b7iDq-o5upZTPszrQmjzO3xnzcDlWxo41WII7Cj2j12D6UJhakjklygMDYA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwv0VjBCRmlhAc2q0ZZ5cdDae5to34qw780t4qT2gVjgVHgMwTmLIEz_AixYcfrrhgdPA/exec";
 const VALID_PASSWORD = "3200";
 const STORAGE_AUTH_KEY = "calendar_authenticated";
 const STORAGE_AUTH_TIME_KEY = "calendar_auth_time";
@@ -481,9 +481,11 @@ const STORAGE_AUTH_TIME_KEY = "calendar_auth_time";
 let currentYear = 2026;
 let currentMonth = 3;
 let scheduleData = {};
+let pendingChanges = {}; // Только изменения
 let isLoading = false;
 let saveTimeout = null;
-let lastSaveTime = 0;
+let isSyncing = false;
+let lastSyncTime = 0;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 let syncStatusTimeout = null;
 
@@ -564,6 +566,7 @@ function showMainApp() {
 
 // ========== СИНХРОНИЗАЦИЯ С ОБЛАКОМ ==========
 
+// Загрузка с MERGE вместо полной замены
 async function loadFromCloud() {
     if (isLoading) return;
     isLoading = true;
@@ -585,13 +588,29 @@ async function loadFromCloud() {
         
         const cloudData = await response.json();
         
-        if (cloudData && !cloudData.error && Object.keys(cloudData).length > 0) {
-            scheduleData = cloudData;
-            showSyncStatus("✅ Данные загружены", "success");
+        if (cloudData && !cloudData.error) {
+            // MERGE: обновляем только более новые версии
+            let updatedCount = 0;
+            for (const key in cloudData) {
+                if (!scheduleData[key] || 
+                    (cloudData[key].updatedAt && scheduleData[key].updatedAt && 
+                     cloudData[key].updatedAt > scheduleData[key].updatedAt)) {
+                    scheduleData[key] = cloudData[key];
+                    updatedCount++;
+                }
+            }
+            
+            // Если данных нет, создаем дефолтные
+            if (Object.keys(scheduleData).length === 0) {
+                initDefaultApril();
+                await saveChangesToCloud(true);
+            }
+            
+            showSyncStatus(`✅ Загружено ${Object.keys(cloudData).length} записей`, "success");
         } else {
             if (Object.keys(scheduleData).length === 0) {
                 initDefaultApril();
-                await saveToCloud(true);
+                await saveChangesToCloud(true);
             }
             showSyncStatus("✅ Календарь готов", "success");
         }
@@ -611,35 +630,39 @@ async function loadFromCloud() {
     }
 }
 
-async function saveToCloud(silent = false) {
-    // Делаем паузу между сохранениями
-    const now = Date.now();
-    if (now - lastSaveTime < 1000) {
-        if (saveTimeout) clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => saveToCloud(silent), 1000);
-        return;
-    }
-    lastSaveTime = now;
+// Отправляем только изменения (pendingChanges)
+async function saveChangesToCloud(silent = false) {
+    if (isSyncing) return false;
+    if (Object.keys(pendingChanges).length === 0) return true;
+    
+    isSyncing = true;
+    const changesToSend = { ...pendingChanges };
     
     if (!silent) {
-        showSyncStatus("💾 Сохранение...", "loading");
+        showSyncStatus(`💾 Отправка ${Object.keys(changesToSend)} изменений...`, "loading");
     }
     
     try {
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(scheduleData)
+            body: JSON.stringify(changesToSend)
         });
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const result = await response.json();
         
-        if (result.status === "success" || result.status === "ok") {
-            if (!silent) {
-                showSyncStatus("✅ Сохранено", "success");
+        if (result.status === "success") {
+            // Очищаем только отправленные изменения
+            for (const key in changesToSend) {
+                delete pendingChanges[key];
             }
+            
+            if (!silent) {
+                showSyncStatus(`✅ Сохранено ${result.updated || Object.keys(changesToSend).length} изменений`, "success");
+            }
+            lastSyncTime = Date.now();
             return true;
         } else {
             throw new Error(result.error || "Unknown error");
@@ -650,25 +673,45 @@ async function saveToCloud(silent = false) {
             showSyncStatus("⚠️ Ошибка сохранения", "error");
         }
         return false;
+    } finally {
+        isSyncing = false;
     }
+}
+
+// Debounced save
+function saveToCloudDebounced() {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        saveChangesToCloud(false);
+    }, 800);
 }
 
 // ========== РАБОТА С ДАННЫМИ ==========
 async function setDayData(year, month, day, type, shiftText, project) {
     const key = getDateKey(year, month, day);
-    scheduleData[key] = { 
+    const value = { 
         type, 
         shiftText: shiftText || (type === "work" ? "02:00–08:00" : ""), 
-        project: project || DEFAULT_PROJECT 
+        project: project || DEFAULT_PROJECT,
+        updatedAt: Date.now()
     };
+    
+    scheduleData[key] = value;
+    pendingChanges[key] = value; // Добавляем в очередь изменений
+    
     renderCalendar();
-    await saveToCloud();
+    saveToCloudDebounced(); // Отложенное сохранение
 }
 
 function getDayData(year, month, day) {
     const key = getDateKey(year, month, day);
     if (scheduleData[key]) return scheduleData[key];
-    return { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
+    return { 
+        type: "work", 
+        shiftText: "02:00–08:00", 
+        project: DEFAULT_PROJECT,
+        updatedAt: 0
+    };
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ АПРЕЛЯ 2026 ==========
@@ -684,7 +727,13 @@ function initDefaultApril() {
         let type = defaultTypes[d];
         let shift = (type === "work") ? "02:00–08:00" : "";
         const key = getDateKey(2026, 3, d);
-        scheduleData[key] = { type, shiftText: shift, project: DEFAULT_PROJECT };
+        scheduleData[key] = { 
+            type, 
+            shiftText: shift, 
+            project: DEFAULT_PROJECT,
+            updatedAt: Date.now()
+        };
+        pendingChanges[key] = scheduleData[key];
     }
 }
 
@@ -841,7 +890,12 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
         else if (lowerShift.includes("отпуск") || lowerShift.includes("vacation")) type = "vacation";
         else shiftText = shiftDesc;
         
-        updates[getDateKey(year, month - 1, day)] = { type, shiftText, project };
+        updates[getDateKey(year, month - 1, day)] = { 
+            type, 
+            shiftText, 
+            project,
+            updatedAt: Date.now()
+        };
     }
     
     return { updates, errors };
@@ -859,9 +913,13 @@ async function importSchedule(rawText) {
         return false;
     }
     
-    Object.assign(scheduleData, updates);
+    for (const [key, value] of Object.entries(updates)) {
+        scheduleData[key] = value;
+        pendingChanges[key] = value;
+    }
+    
     renderCalendar();
-    await saveToCloud();
+    saveToCloudDebounced();
     alert(`✅ Импортировано ${Object.keys(updates).length} дней`);
     return true;
 }
@@ -873,22 +931,18 @@ async function resetCurrentMonth() {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
         const key = getDateKey(currentYear, currentMonth, d);
-        delete scheduleData[key];
+        const value = { 
+            type: "work", 
+            shiftText: "02:00–08:00", 
+            project: DEFAULT_PROJECT,
+            updatedAt: Date.now()
+        };
+        scheduleData[key] = value;
+        pendingChanges[key] = value;
     }
     
-    if (currentYear === 2026 && currentMonth === 3) {
-        initDefaultApril();
-    } else {
-        for (let d = 1; d <= daysInMonth; d++) {
-            scheduleData[getDateKey(currentYear, currentMonth, d)] = { 
-                type: "work", 
-                shiftText: "02:00–08:00", 
-                project: DEFAULT_PROJECT 
-            };
-        }
-    }
     renderCalendar();
-    await saveToCloud();
+    saveToCloudDebounced();
     alert("✅ Данные сброшены");
 }
 
@@ -994,6 +1048,7 @@ async function initApp() {
     document.getElementById("logoutBtn").onclick = () => {
         clearAuthFromStorage();
         scheduleData = {};
+        pendingChanges = {};
         showLoginScreen();
     };
     
