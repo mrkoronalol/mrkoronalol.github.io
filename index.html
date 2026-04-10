@@ -394,7 +394,7 @@ button:active {
             <div class="header-flex">
                 <h1>📅 Рабочий календарь</h1>
                 <div class="user-info">
-                    <span>👤 Пользователь</span>
+                    <span>👥 Общий доступ</span>
                     <button id="logoutBtn" class="logout-btn">Выйти</button>
                 </div>
             </div>
@@ -451,27 +451,27 @@ button:active {
 // ========== НАСТРОЙКИ ==========
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweUql7Oxz70dVGGd32Fi0kU1i8mxLKAxdKfdWMxrL_mvsTWQY4Q-TxDrSo3lX6Sef6tg/exec";
 const VALID_PASSWORD = "3200";
-const STORAGE_USER_KEY = "calendar_user_id";
+const STORAGE_AUTH_KEY = "calendar_authenticated";
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentYear = 2026;
 let currentMonth = 3;
 let scheduleData = {};
 let isLoading = false;
-let currentUserId = null;
+let isAuthenticated = false;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 
-// ========== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЕМ ==========
-function saveUserToStorage(userId) {
-    localStorage.setItem(STORAGE_USER_KEY, userId);
+// ========== УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ ==========
+function saveAuthToStorage() {
+    localStorage.setItem(STORAGE_AUTH_KEY, "true");
 }
 
-function getUserFromStorage() {
-    return localStorage.getItem(STORAGE_USER_KEY);
+function clearAuthFromStorage() {
+    localStorage.removeItem(STORAGE_AUTH_KEY);
 }
 
-function clearUserFromStorage() {
-    localStorage.removeItem(STORAGE_USER_KEY);
+function isAuthenticatedInStorage() {
+    return localStorage.getItem(STORAGE_AUTH_KEY) === "true";
 }
 
 function showLoginScreen() {
@@ -488,7 +488,7 @@ function showMainApp() {
 
 // ========== ЗАГРУЗКА ДАННЫХ ИЗ ОБЛАКА ==========
 async function loadFromCloud() {
-    if (isLoading || !currentUserId) return;
+    if (isLoading) return;
     isLoading = true;
     
     const statusDiv = document.getElementById("syncStatus");
@@ -496,7 +496,7 @@ async function loadFromCloud() {
     statusDiv.innerHTML = "☁️ Загрузка данных...";
     
     try {
-        const response = await fetch(`${SCRIPT_URL}?action=load&userId=${currentUserId}&t=${Date.now()}`);
+        const response = await fetch(`${SCRIPT_URL}?action=load&t=${Date.now()}`);
         const cloudData = await response.json();
         
         if (cloudData && Object.keys(cloudData).length > 0) {
@@ -508,11 +508,11 @@ async function loadFromCloud() {
             }, 2000);
         } else {
             // Первый вход - создаём дефолтные данные
-            statusDiv.innerHTML = "📝 Создание профиля...";
+            statusDiv.innerHTML = "📝 Создание календаря...";
             initDefaultApril();
             await saveToCloud();
             statusDiv.className = "sync-status success";
-            statusDiv.innerHTML = "✅ Профиль создан";
+            statusDiv.innerHTML = "✅ Календарь создан";
             setTimeout(() => {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
@@ -534,15 +534,13 @@ async function loadFromCloud() {
 
 // ========== СОХРАНЕНИЕ В ОБЛАКО ==========
 async function saveToCloud() {
-    if (!currentUserId) return false;
-    
     const statusDiv = document.getElementById("syncStatus");
     const originalText = statusDiv.innerHTML;
     statusDiv.className = "sync-status loading";
     statusDiv.innerHTML = "💾 Сохранение...";
     
     try {
-        await fetch(`${SCRIPT_URL}?userId=${currentUserId}`, {
+        await fetch(SCRIPT_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
@@ -803,10 +801,9 @@ function exportPDF() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ==========
 function initApp() {
-    // Проверяем, есть ли сохранённый пользователь
-    const savedUser = getUserFromStorage();
-    if (savedUser) {
-        currentUserId = savedUser;
+    // Проверяем, есть ли сохранённая авторизация
+    if (isAuthenticatedInStorage()) {
+        isAuthenticated = true;
         showMainApp();
         loadFromCloud();
     } else {
@@ -818,10 +815,8 @@ function initApp() {
 document.getElementById("loginBtn").onclick = () => {
     const password = document.getElementById("passwordInput").value;
     if (password === VALID_PASSWORD) {
-        // Генерируем уникальный ID пользователя (можно использовать device fingerprint)
-        const userId = "user_" + Date.now() + "_" + Math.random().toString(36).substr(2, 8);
-        currentUserId = userId;
-        saveUserToStorage(userId);
+        isAuthenticated = true;
+        saveAuthToStorage();
         showMainApp();
         loadFromCloud();
     } else {
@@ -836,8 +831,8 @@ document.getElementById("passwordInput").onkeypress = (e) => {
 };
 
 document.getElementById("logoutBtn").onclick = () => {
-    clearUserFromStorage();
-    currentUserId = null;
+    clearAuthFromStorage();
+    isAuthenticated = false;
     scheduleData = {};
     showLoginScreen();
 };
