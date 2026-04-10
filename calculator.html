@@ -62,6 +62,18 @@
             color: #64748b;
             margin-bottom: 24px;
             font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sync-badge {
+            background: #e0e7ff;
+            color: #4c1d95;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
         }
 
         .period-selector {
@@ -148,11 +160,13 @@
 
         .days-grid {
             margin-bottom: 24px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .days-header {
             display: grid;
-            grid-template-columns: 1fr 2fr 1.5fr;
+            grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr;
             gap: 8px;
             padding: 12px 8px;
             background: #f1f5f9;
@@ -161,11 +175,13 @@
             font-size: 0.8rem;
             color: #475569;
             margin-bottom: 8px;
+            position: sticky;
+            top: 0;
         }
 
         .day-row {
             display: grid;
-            grid-template-columns: 1fr 2fr 1.5fr;
+            grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr;
             gap: 8px;
             padding: 12px 8px;
             border-bottom: 1px solid #f1f5f9;
@@ -181,6 +197,18 @@
             font-size: 0.75rem;
             color: #64748b;
         }
+
+        .day-type {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .type-work { background: #dbeafe; color: #1e40af; }
+        .type-off { background: #fef3c7; color: #92400e; }
+        .type-vacation { background: #d1fae5; color: #065f46; }
 
         .hours-input {
             width: 100%;
@@ -267,6 +295,11 @@
 
         .btn-success {
             background: #10b981;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
             color: white;
         }
 
@@ -375,6 +408,38 @@
             color: #94a3b8;
         }
 
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 24px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 600px) {
             .container { padding: 16px; }
             h1 { font-size: 1.5rem; }
@@ -398,7 +463,10 @@
             <a href="index.html" class="back-btn">← Назад к календарю</a>
             <h1>💰 Калькулятор</h1>
         </div>
-        <div class="subtitle">Лемана ПРО — почасовой расчет</div>
+        <div class="subtitle">
+            <span>Лемана ПРО — почасовой расчет</span>
+            <span class="sync-badge" id="syncBadge">⚡ Синхронизация с Gist</span>
+        </div>
 
         <div class="period-selector">
             <div class="period-input">
@@ -423,6 +491,7 @@
         <div class="days-grid">
             <div class="days-header">
                 <span>День</span>
+                <span>Тип</span>
                 <span>Часы</span>
                 <span>Сумма</span>
             </div>
@@ -430,8 +499,8 @@
         </div>
 
         <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <button class="btn-secondary" style="flex:1; padding: 10px;" id="fillWeekdaysBtn">📋 Заполнить будни (8ч)</button>
-            <button class="btn-secondary" style="flex:1; padding: 10px;" id="clearHoursBtn">🧹 Очистить часы</button>
+            <button class="btn-secondary" style="flex:1; padding: 10px;" id="loadFromCalendarBtn">📅 Загрузить из календаря</button>
+            <button class="btn-secondary" style="flex:1; padding: 10px;" id="clearHoursBtn">🧹 Очистить</button>
         </div>
 
         <div class="summary-section">
@@ -451,16 +520,19 @@
 
         <div class="actions">
             <button class="btn btn-primary" id="calculateBtn">🔄 Пересчитать</button>
-            <button class="btn btn-success" id="savePeriodBtn">💾 Сохранить период</button>
+            <button class="btn btn-success" id="savePeriodBtn">💾 Сохранить в Gist</button>
         </div>
 
         <div class="history-section">
             <div class="history-title">
                 <h3>📚 История периодов</h3>
-                <button class="btn-secondary" style="padding: 8px 16px;" id="clearHistoryBtn">Очистить</button>
+                <div>
+                    <button class="btn-secondary" style="padding: 8px 16px;" id="loadHistoryBtn">☁️ Загрузить</button>
+                    <button class="btn-secondary" style="padding: 8px 16px;" id="clearHistoryBtn">🗑️ Очистить</button>
+                </div>
             </div>
             <div class="history-list" id="historyList">
-                <div class="empty-state">Нет сохраненных периодов</div>
+                <div class="empty-state">Нажмите "Загрузить" для синхронизации</div>
             </div>
         </div>
     </div>
@@ -476,56 +548,210 @@
         </div>
     </div>
 
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <span id="loadingText">Загрузка...</span>
+        </div>
+    </div>
+
     <script>
+        // ========== НАСТРОЙКИ ==========
+        let GIST_ID = localStorage.getItem('gist_id') || '';
+        let GITHUB_TOKEN = localStorage.getItem('github_token') || '';
+        const CALENDAR_FILENAME = "calendar-data.json";
+        const SALARY_FILENAME = "salary-data.json";
+        
         let hourlyRate = 230;
         let currentDays = [];
         let periodHistory = [];
-        
-        const STORAGE_HISTORY_KEY = 'salary_history';
+        let calendarData = {};
+
         const STORAGE_RATE_KEY = 'hourly_rate';
 
-        function init() {
-            const savedRate = localStorage.getItem(STORAGE_RATE_KEY);
-            if (savedRate) hourlyRate = parseFloat(savedRate);
-            document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
-            
-            loadHistory();
-            
-            const today = new Date();
-            const weekAgo = new Date(today);
-            weekAgo.setDate(today.getDate() - 6);
-            
-            document.getElementById('startDate').valueAsDate = weekAgo;
-            document.getElementById('endDate').valueAsDate = today;
-            
-            generateDays();
-            bindEvents();
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+        function showLoading(text = 'Загрузка...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
         }
 
-        function bindEvents() {
-            document.getElementById('startDate').addEventListener('change', generateDays);
-            document.getElementById('endDate').addEventListener('change', generateDays);
-            document.getElementById('calculateBtn').addEventListener('click', calculateTotal);
-            document.getElementById('fillWeekdaysBtn').addEventListener('click', fillWeekdays);
-            document.getElementById('clearHoursBtn').addEventListener('click', clearAllHours);
-            document.getElementById('savePeriodBtn').addEventListener('click', savePeriod);
-            document.getElementById('editRateBtn').addEventListener('click', () => {
-                document.getElementById('newRateInput').value = hourlyRate;
-                document.getElementById('rateModal').style.display = 'flex';
-            });
-            document.getElementById('cancelRateBtn').addEventListener('click', () => {
-                document.getElementById('rateModal').style.display = 'none';
-            });
-            document.getElementById('saveRateBtn').addEventListener('click', saveNewRate);
-            document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function updateSyncBadge() {
+            const badge = document.getElementById('syncBadge');
+            if (GIST_ID && GITHUB_TOKEN) {
+                badge.innerHTML = '✅ Синхронизация активна';
+                badge.style.background = '#d1fae5';
+                badge.style.color = '#065f46';
+            } else if (GIST_ID) {
+                badge.innerHTML = '📖 Только чтение';
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#92400e';
+            } else {
+                badge.innerHTML = '⚙️ Настройте Gist в календаре';
+                badge.style.background = '#fee2e2';
+                badge.style.color = '#991b1b';
+            }
+        }
+
+        // ========== РАБОТА С GITHUB GIST ==========
+        async function loadCalendarFromGist() {
+            if (!GIST_ID) {
+                alert('❌ Gist ID не найден. Настройте синхронизацию в календаре.');
+                return null;
+            }
+
+            try {
+                const headers = GITHUB_TOKEN ? { 
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                } : {
+                    'Accept': 'application/vnd.github.v3+json'
+                };
+
+                const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const gistData = await response.json();
+                const fileContent = gistData.files[CALENDAR_FILENAME]?.content;
+                
+                if (fileContent) {
+                    calendarData = JSON.parse(fileContent);
+                    return calendarData;
+                }
+                return {};
+            } catch (error) {
+                console.error('Ошибка загрузки календаря:', error);
+                alert('⚠️ Не удалось загрузить данные календаря');
+                return null;
+            }
+        }
+
+        async function loadSalaryFromGist() {
+            if (!GIST_ID) return [];
+
+            try {
+                const headers = GITHUB_TOKEN ? { 
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                } : {};
+
+                const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
+                
+                if (!response.ok) return [];
+
+                const gistData = await response.json();
+                const fileContent = gistData.files[SALARY_FILENAME]?.content;
+                
+                if (fileContent) {
+                    return JSON.parse(fileContent);
+                }
+                return [];
+            } catch (error) {
+                console.error('Ошибка загрузки истории ЗП:', error);
+                return [];
+            }
+        }
+
+        async function saveSalaryToGist() {
+            if (!GIST_ID) {
+                alert('❌ Gist ID не найден');
+                return false;
+            }
+            if (!GITHUB_TOKEN) {
+                alert('❌ Токен не найден. Настройте синхронизацию в календаре.');
+                return false;
+            }
+
+            try {
+                // Получаем текущий Gist
+                const getRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                const gistData = await getRes.json();
+                
+                // Обновляем только salary-data.json
+                const updateRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                    method: "PATCH",
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            [SALARY_FILENAME]: { 
+                                content: JSON.stringify(periodHistory, null, 2) 
+                            }
+                        }
+                    })
+                });
+
+                if (!updateRes.ok) throw new Error(`HTTP ${updateRes.status}`);
+                return true;
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                alert('⚠️ Не удалось сохранить данные');
+                return false;
+            }
+        }
+
+        // ========== ЗАГРУЗКА ЧАСОВ ИЗ КАЛЕНДАРЯ ==========
+        async function loadHoursFromCalendar() {
+            showLoading('Загрузка расписания...');
             
-            document.getElementById('rateModal').addEventListener('click', (e) => {
-                if (e.target === document.getElementById('rateModal')) {
-                    document.getElementById('rateModal').style.display = 'none';
+            const data = await loadCalendarFromGist();
+            if (!data) {
+                hideLoading();
+                return;
+            }
+
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+
+            currentDays.forEach(day => {
+                const dateKey = day.date;
+                const calendarEntry = data[dateKey];
+                
+                if (calendarEntry) {
+                    // Если рабочий день - ставим 8 часов (можно парсить из shiftText)
+                    if (calendarEntry.type === 'work') {
+                        // Пробуем извлечь часы из shiftText (например "02:00–08:00" = 6 часов)
+                        const shiftText = calendarEntry.shiftText || '';
+                        const match = shiftText.match(/(\d+):00[–-](\d+):00/);
+                        if (match) {
+                            const start = parseInt(match[1]);
+                            const end = parseInt(match[2]);
+                            let hours = end - start;
+                            if (hours < 0) hours += 24;
+                            day.hours = hours;
+                        } else {
+                            day.hours = 8; // По умолчанию 8 часов
+                        }
+                    } else {
+                        day.hours = 0; // Выходной или отпуск
+                    }
                 }
             });
+
+            // Обновляем инпуты
+            currentDays.forEach(day => {
+                const input = document.querySelector(`[data-date="${day.date}"]`);
+                if (input) {
+                    input.value = day.hours;
+                    updateDayTotal(day.date, day.hours);
+                }
+            });
+
+            calculateTotal();
+            hideLoading();
+            alert('✅ Часы загружены из календаря');
         }
 
+        // ========== ГЕНЕРАЦИЯ ДНЕЙ ==========
         function generateDays() {
             const startDate = new Date(document.getElementById('startDate').value);
             const endDate = new Date(document.getElementById('endDate').value);
@@ -545,10 +771,27 @@
                 const dayOfWeek = currentDate.toLocaleDateString('ru-RU', { weekday: 'short' });
                 const dayOfMonth = currentDate.getDate();
                 
+                // Получаем тип дня из календаря
+                let dayType = 'work';
+                let typeClass = 'type-work';
+                let typeText = 'Работа';
+                
+                if (calendarData[dateStr]) {
+                    dayType = calendarData[dateStr].type;
+                    if (dayType === 'off') {
+                        typeClass = 'type-off';
+                        typeText = 'Выходной';
+                    } else if (dayType === 'vacation') {
+                        typeClass = 'type-vacation';
+                        typeText = 'Отпуск';
+                    }
+                }
+                
                 const dayData = {
                     date: dateStr,
                     dayName: dayOfWeek,
                     dayNum: dayOfMonth,
+                    type: dayType,
                     hours: 0
                 };
                 
@@ -558,13 +801,13 @@
                 row.className = 'day-row';
                 row.dataset.date = dateStr;
                 
-                const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-                
                 row.innerHTML = `
                     <div>
                         <div class="day-name">${dayOfWeek}</div>
                         <div class="day-date">${dayOfMonth} ${currentDate.toLocaleDateString('ru-RU', { month: 'short' })}</div>
-                        ${isWeekend ? '<span style="color:#ef4444; font-size:0.7rem;">вых</span>' : ''}
+                    </div>
+                    <div>
+                        <span class="day-type ${typeClass}">${typeText}</span>
                     </div>
                     <div>
                         <input type="number" 
@@ -628,53 +871,8 @@
             return { totalHours, workedDays, totalSalary };
         }
 
-        function fillWeekdays() {
-            currentDays.forEach(day => {
-                const date = new Date(day.date);
-                const dayOfWeek = date.getDay();
-                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-                    day.hours = 8;
-                }
-            });
-            
-            currentDays.forEach(day => {
-                const input = document.querySelector(`[data-date="${day.date}"]`);
-                if (input) {
-                    input.value = day.hours;
-                    updateDayTotal(day.date, day.hours);
-                }
-            });
-            
-            calculateTotal();
-        }
-
-        function clearAllHours() {
-            currentDays.forEach(day => day.hours = 0);
-            
-            document.querySelectorAll('.hours-input').forEach(input => {
-                input.value = 0;
-                updateDayTotal(input.dataset.date, 0);
-            });
-            
-            calculateTotal();
-        }
-
-        function saveNewRate() {
-            const newRate = parseFloat(document.getElementById('newRateInput').value);
-            if (newRate && newRate > 0) {
-                hourlyRate = newRate;
-                localStorage.setItem(STORAGE_RATE_KEY, hourlyRate);
-                document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
-                
-                currentDays.forEach(day => {
-                    updateDayTotal(day.date, day.hours);
-                });
-                calculateTotal();
-            }
-            document.getElementById('rateModal').style.display = 'none';
-        }
-
-        function savePeriod() {
+        // ========== СОХРАНЕНИЕ ПЕРИОДА ==========
+        async function savePeriod() {
             const stats = calculateTotal();
             
             if (stats.totalHours === 0) {
@@ -689,7 +887,7 @@
                 id: Date.now(),
                 startDate,
                 endDate,
-                days: currentDays.map(d => ({ date: d.date, hours: d.hours })),
+                days: currentDays.map(d => ({ date: d.date, hours: d.hours, type: d.type })),
                 totalHours: stats.totalHours,
                 workedDays: stats.workedDays,
                 totalSalary: stats.totalSalary,
@@ -699,30 +897,39 @@
             
             periodHistory.unshift(period);
             
-            if (periodHistory.length > 20) {
-                periodHistory = periodHistory.slice(0, 20);
+            if (periodHistory.length > 50) {
+                periodHistory = periodHistory.slice(0, 50);
             }
             
-            saveHistory();
             renderHistory();
             
-            alert(`✅ Период сохранен!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
-        }
-
-        function loadHistory() {
-            const saved = localStorage.getItem(STORAGE_HISTORY_KEY);
-            if (saved) {
-                try {
-                    periodHistory = JSON.parse(saved);
-                } catch (e) {
-                    periodHistory = [];
+            // Сохраняем в Gist
+            if (GIST_ID && GITHUB_TOKEN) {
+                showLoading('Сохранение в Gist...');
+                const success = await saveSalaryToGist();
+                hideLoading();
+                
+                if (success) {
+                    alert(`✅ Период сохранен в Gist!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+                } else {
+                    alert(`⚠️ Сохранено локально (Gist недоступен)\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
                 }
+            } else {
+                alert(`✅ Период сохранен локально!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽\n\nНастройте Gist для облачного сохранения.`);
             }
-            renderHistory();
         }
 
-        function saveHistory() {
-            localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(periodHistory));
+        // ========== ИСТОРИЯ ==========
+        async function loadHistory() {
+            if (GIST_ID) {
+                showLoading('Загрузка истории...');
+                const history = await loadSalaryFromGist();
+                if (history.length > 0) {
+                    periodHistory = history;
+                }
+                hideLoading();
+            }
+            renderHistory();
         }
 
         function renderHistory() {
@@ -733,7 +940,7 @@
                 return;
             }
             
-            container.innerHTML = periodHistory.map(period => {
+            container.innerHTML = periodHistory.slice(0, 10).map(period => {
                 const start = new Date(period.startDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                 const end = new Date(period.endDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                 
@@ -760,10 +967,10 @@
             });
             
             container.querySelectorAll('.history-delete').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const id = parseInt(btn.dataset.id);
-                    deletePeriod(id);
+                    await deletePeriod(id);
                 });
             });
         }
@@ -772,7 +979,7 @@
             const period = periodHistory.find(p => p.id === id);
             if (!period) return;
             
-            if (!confirm(`Загрузить период ${period.startDate} — ${period.endDate}?\nТекущие данные будут заменены.`)) {
+            if (!confirm(`Загрузить период ${period.startDate} — ${period.endDate}?`)) {
                 return;
             }
             
@@ -800,20 +1007,107 @@
             calculateTotal();
         }
 
-        function deletePeriod(id) {
+        async function deletePeriod(id) {
             if (!confirm('Удалить этот период из истории?')) return;
             
             periodHistory = periodHistory.filter(p => p.id !== id);
-            saveHistory();
             renderHistory();
+            
+            if (GIST_ID && GITHUB_TOKEN) {
+                await saveSalaryToGist();
+            }
         }
 
-        function clearHistory() {
+        async function clearHistory() {
             if (!confirm('Очистить всю историю?')) return;
             
             periodHistory = [];
-            saveHistory();
             renderHistory();
+            
+            if (GIST_ID && GITHUB_TOKEN) {
+                await saveSalaryToGist();
+            }
+        }
+
+        function saveNewRate() {
+            const newRate = parseFloat(document.getElementById('newRateInput').value);
+            if (newRate && newRate > 0) {
+                hourlyRate = newRate;
+                localStorage.setItem(STORAGE_RATE_KEY, hourlyRate);
+                document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
+                
+                currentDays.forEach(day => {
+                    updateDayTotal(day.date, day.hours);
+                });
+                calculateTotal();
+            }
+            document.getElementById('rateModal').style.display = 'none';
+        }
+
+        function clearAllHours() {
+            currentDays.forEach(day => day.hours = 0);
+            
+            document.querySelectorAll('.hours-input').forEach(input => {
+                input.value = 0;
+                updateDayTotal(input.dataset.date, 0);
+            });
+            
+            calculateTotal();
+        }
+
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        async function init() {
+            // Загружаем настройки Gist
+            GIST_ID = localStorage.getItem('gist_id') || '';
+            GITHUB_TOKEN = localStorage.getItem('github_token') || '';
+            
+            const savedRate = localStorage.getItem(STORAGE_RATE_KEY);
+            if (savedRate) hourlyRate = parseFloat(savedRate);
+            document.getElementById('hourlyRateDisplay').textContent = hourlyRate;
+            
+            updateSyncBadge();
+            
+            // Если есть Gist ID, загружаем календарь для отображения типов дней
+            if (GIST_ID) {
+                showLoading('Загрузка календаря...');
+                await loadCalendarFromGist();
+                hideLoading();
+            }
+            
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 6);
+            
+            document.getElementById('startDate').valueAsDate = weekAgo;
+            document.getElementById('endDate').valueAsDate = today;
+            
+            generateDays();
+            bindEvents();
+        }
+
+        function bindEvents() {
+            document.getElementById('startDate').addEventListener('change', generateDays);
+            document.getElementById('endDate').addEventListener('change', generateDays);
+            document.getElementById('calculateBtn').addEventListener('click', calculateTotal);
+            document.getElementById('loadFromCalendarBtn').addEventListener('click', loadHoursFromCalendar);
+            document.getElementById('clearHoursBtn').addEventListener('click', clearAllHours);
+            document.getElementById('savePeriodBtn').addEventListener('click', savePeriod);
+            document.getElementById('loadHistoryBtn').addEventListener('click', loadHistory);
+            document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+            document.getElementById('editRateBtn').addEventListener('click', () => {
+                document.getElementById('newRateInput').value = hourlyRate;
+                document.getElementById('rateModal').style.display = 'flex';
+            });
+            document.getElementById('cancelRateBtn').addEventListener('click', () => {
+                document.getElementById('rateModal').style.display = 'none';
+            });
+            document.getElementById('saveRateBtn').addEventListener('click', saveNewRate);
+            
+            document.getElementById('rateModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('rateModal')) {
+                    document.getElementById('rateModal').style.display = 'none';
+                }
+            });
         }
 
         init();
