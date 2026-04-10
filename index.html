@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Календарь сотрудника — Лемана ПРО (Gist)</title>
+<title>Календарь сотрудника — Лемана ПРО</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-/* --- ДИЗАЙН ОСТАВЛЕН БЕЗ ИЗМЕНЕНИЙ, ТОЛЬКО ПОЧИЩЕНЫ ЛИШНИЕ СТИЛИ ПОД СТАТУСЫ --- */
+/* Все стили оставлены без изменений */
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -32,6 +32,49 @@ body {
     padding: 16px 16px 24px 16px;
 }
 
+/* Стили для модального окна настроек */
+.settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+}
+
+.settings-content {
+    background: white;
+    padding: 24px;
+    border-radius: 32px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.settings-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    font-family: monospace;
+}
+
+.info-box {
+    background: #f1f5f9;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 16px 0;
+    font-size: 0.85rem;
+}
+
+.info-box a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+/* Остальные стили как были */
 .login-container {
     max-width: 400px;
     margin: 100px auto;
@@ -104,14 +147,22 @@ h1 {
     font-size: 0.85rem;
 }
 
-.logout-btn {
-    background: #ef4444;
+.logout-btn, .settings-btn {
     padding: 4px 12px;
     font-size: 0.7rem;
     border: none;
     border-radius: 40px;
-    color: white;
     cursor: pointer;
+}
+
+.logout-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.settings-btn {
+    background: #64748b;
+    color: white;
 }
 
 .month-nav {
@@ -407,7 +458,7 @@ button:disabled {
             <div class="header-flex">
                 <h1>📅 Рабочий календарь</h1>
                 <div class="user-info">
-                    <span>👥 GitHub Gist</span>
+                    <button id="settingsBtn" class="settings-btn">⚙️ Настройки</button>
                     <button id="logoutBtn" class="logout-btn">Выйти</button>
                 </div>
             </div>
@@ -424,23 +475,47 @@ button:disabled {
                 <div class="btn-group">
                     <button id="exportPngBtn">📸 PNG</button>
                     <button id="exportPdfBtn">📄 PDF</button>
-                    <button id="showImportBtn" class="btn-import">📥 Импорт расписания</button>
+                    <button id="showImportBtn" class="btn-import">📥 Импорт</button>
                 </div>
                 <div class="btn-group">
                     <button id="refreshBtn" class="btn-sync">🔄 Обновить</button>
-                    <button id="resetToDefaultBtn">⟳ Сброс месяца</button>
+                    <button id="resetToDefaultBtn">⟳ Сброс</button>
                 </div>
             </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                <div id="syncStatus" class="sync-status">☁️ Gist синхронизация</div>
-                <div style="font-size: 0.7rem; color: #64748b;">💾 Автосохранение в Gist</div>
+                <div id="syncStatus" class="sync-status">☁️ GitHub Gist</div>
+                <div style="font-size: 0.7rem; color: #64748b;" id="storageMode">📖 Режим чтения</div>
             </div>
 
             <div class="weekday-header">
                 <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span>
             </div>
             <div class="calendar" id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настроек -->
+<div class="settings-modal" id="settingsModal">
+    <div class="settings-content">
+        <h3>⚙️ Настройки GitHub Gist</h3>
+        
+        <label>Gist ID:</label>
+        <input type="text" id="gistIdInput" placeholder="Например: 57f8154896ed2c5e3e275096b6da9c2c">
+        
+        <label>GitHub Token (для сохранения):</label>
+        <input type="password" id="githubTokenInput" placeholder="ghp_..." autocomplete="off">
+        
+        <div class="info-box">
+            <strong>🔒 Безопасно:</strong> Токен хранится только в вашем браузере.<br>
+            <a href="https://github.com/settings/tokens/new" target="_blank">Создать новый токен →</a><br>
+            <small>Нужно право: <code>gist</code></small>
+        </div>
+        
+        <div class="modal-buttons">
+            <button id="saveSettingsBtn" style="background:#2b6e4f;">Сохранить</button>
+            <button id="closeSettingsBtn">Отмена</button>
         </div>
     </div>
 </div>
@@ -459,10 +534,7 @@ button:disabled {
 Лемана ПРО_B2C_голос_вход
 
 02.04.2026
-выходной
-
-03.04.2026
-отпуск"></textarea>
+выходной"></textarea>
         <div class="modal-buttons">
             <button id="applyImportBtn" style="background:#2b6e4f;">Применить</button>
             <button id="closeImportBtn">Отмена</button>
@@ -471,23 +543,21 @@ button:disabled {
 </div>
 
 <script>
-// ========== НОВЫЕ НАСТРОЙКИ GITHUB GIST ==========
-const GIST_ID = "57f8154896ed2c5e3e275096b6da9c2c"; // Замените на ID вашего Gist
-const GITHUB_TOKEN = "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"; // Оставьте пустым если не нужна запись (read-only режим)
+// ========== НАСТРОЙКИ (БЕЗОПАСНО - ВВОДИТ ПОЛЬЗОВАТЕЛЬ) ==========
+let GIST_ID = localStorage.getItem('gist_id') || '';
+let GITHUB_TOKEN = localStorage.getItem('github_token') || '';
 const GIST_FILENAME = "calendar-data.json";
 const VALID_PASSWORD = "3200";
 const STORAGE_AUTH_KEY = "calendar_authenticated";
-const STORAGE_AUTH_TIME_KEY = "calendar_auth_time";
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentYear = 2026;
-let currentMonth = 3; // Апрель
+let currentMonth = 3;
 let scheduleData = {};
 let pendingChanges = {};
 let isLoading = false;
 let saveTimeout = null;
 let isSyncing = false;
-let lastSyncTime = 0;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 let syncStatusTimeout = null;
 
@@ -515,38 +585,40 @@ function showSyncStatus(message, type) {
         statusDiv.innerHTML = message;
         syncStatusTimeout = setTimeout(() => {
             statusDiv.className = "sync-status";
-            statusDiv.innerHTML = "☁️ Gist синхронизация";
+            statusDiv.innerHTML = "☁️ GitHub Gist";
         }, 2500);
     } else if (type === 'error') {
         statusDiv.className = "sync-status error";
         statusDiv.innerHTML = message;
         syncStatusTimeout = setTimeout(() => {
             statusDiv.className = "sync-status";
-            statusDiv.innerHTML = "☁️ Gist синхронизация";
+            statusDiv.innerHTML = "☁️ GitHub Gist";
         }, 3000);
+    }
+}
+
+function updateStorageMode() {
+    const modeEl = document.getElementById('storageMode');
+    if (GITHUB_TOKEN) {
+        modeEl.innerHTML = '💾 Запись включена';
+        modeEl.style.color = '#059669';
+    } else {
+        modeEl.innerHTML = '📖 Только чтение';
+        modeEl.style.color = '#64748b';
     }
 }
 
 // ========== УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ ==========
 function saveAuthToStorage() {
     localStorage.setItem(STORAGE_AUTH_KEY, "true");
-    localStorage.setItem(STORAGE_AUTH_TIME_KEY, Date.now().toString());
 }
 
 function clearAuthFromStorage() {
     localStorage.removeItem(STORAGE_AUTH_KEY);
-    localStorage.removeItem(STORAGE_AUTH_TIME_KEY);
 }
 
 function isAuthenticatedInStorage() {
-    const auth = localStorage.getItem(STORAGE_AUTH_KEY);
-    const authTime = localStorage.getItem(STORAGE_AUTH_TIME_KEY);
-    if (!auth || auth !== "true") return false;
-    if (authTime && (Date.now() - parseInt(authTime) > 24 * 60 * 60 * 1000)) {
-        clearAuthFromStorage();
-        return false;
-    }
-    return true;
+    return localStorage.getItem(STORAGE_AUTH_KEY) === "true";
 }
 
 function showLoginScreen() {
@@ -559,10 +631,18 @@ function showLoginScreen() {
 function showMainApp() {
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("mainApp").style.display = "block";
+    document.getElementById("gistIdInput").value = GIST_ID;
+    document.getElementById("githubTokenInput").value = GITHUB_TOKEN;
+    updateStorageMode();
 }
 
 // ========== СИНХРОНИЗАЦИЯ С GITHUB GIST ==========
 async function loadFromGist() {
+    if (!GIST_ID) {
+        showSyncStatus("⚠️ Укажите Gist ID в настройках", "error");
+        return;
+    }
+    
     if (isLoading) return;
     isLoading = true;
     
@@ -574,13 +654,28 @@ async function loadFromGist() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
+        const headers = GITHUB_TOKEN ? { 
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+        } : {
+            'Accept': 'application/vnd.github.v3+json'
+        };
+        
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             signal: controller.signal,
-            headers: GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {}
+            headers: headers
         });
+        
         clearTimeout(timeoutId);
         
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error("Неверный токен");
+            } else if (response.status === 404) {
+                throw new Error("Gist не найден");
+            }
+            throw new Error(`HTTP ${response.status}`);
+        }
         
         const gistData = await response.json();
         const fileContent = gistData.files[GIST_FILENAME]?.content;
@@ -590,7 +685,6 @@ async function loadFromGist() {
                 const cloudData = JSON.parse(fileContent);
                 let updatedCount = 0;
                 
-                // Умный мерж: обновляем только если timestamp новее
                 for (const key in cloudData) {
                     if (!scheduleData[key] || 
                         (cloudData[key].updatedAt && scheduleData[key].updatedAt && 
@@ -599,20 +693,19 @@ async function loadFromGist() {
                         updatedCount++;
                     }
                 }
-                showSyncStatus(`✅ Загружено ${updatedCount} обновлений`, "success");
+                showSyncStatus(`✅ Загружено ${updatedCount} записей`, "success");
             } catch (e) {
-                console.error("JSON parse error:", e);
                 showSyncStatus("⚠️ Ошибка формата JSON", "error");
             }
         } else {
             if (Object.keys(scheduleData).length === 0) initDefaultApril();
-            showSyncStatus("✅ Новый файл создан локально", "success");
+            showSyncStatus("📝 Новый календарь", "success");
         }
         
         renderCalendar();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        showSyncStatus("⚠️ Офлайн режим", "error");
+        showSyncStatus(`⚠️ ${error.message}`, "error");
         if (Object.keys(scheduleData).length === 0) {
             initDefaultApril();
             renderCalendar();
@@ -627,17 +720,20 @@ async function saveChangesToGist(silent = false) {
     if (isSyncing) return false;
     if (Object.keys(pendingChanges).length === 0) return true;
     if (!GITHUB_TOKEN) {
-        if (!silent) showSyncStatus("🔒 Нет токена. Только чтение.", "error");
+        if (!silent) showSyncStatus("🔒 Нужен токен для сохранения", "error");
+        return false;
+    }
+    if (!GIST_ID) {
+        if (!silent) showSyncStatus("⚠️ Укажите Gist ID", "error");
         return false;
     }
     
     isSyncing = true;
     const changesToSend = { ...pendingChanges };
     
-    if (!silent) showSyncStatus(`💾 Отправка ${Object.keys(changesToSend).length} изм.`, "loading");
+    if (!silent) showSyncStatus(`💾 Сохранение...`, "loading");
     
     try {
-        // Сначала получаем актуальный контент
         const getRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
         });
@@ -647,7 +743,6 @@ async function saveChangesToGist(silent = false) {
             currentContent = JSON.parse(gistData.files[GIST_FILENAME]?.content || "{}");
         } catch (e) {}
         
-        // Мержим изменения
         const newContent = { ...currentContent, ...changesToSend };
         
         const updateRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
@@ -657,17 +752,14 @@ async function saveChangesToGist(silent = false) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                files: {
-                    [GIST_FILENAME]: { content: JSON.stringify(newContent, null, 2) }
-                }
+                files: { [GIST_FILENAME]: { content: JSON.stringify(newContent, null, 2) } }
             })
         });
         
         if (!updateRes.ok) throw new Error(`HTTP ${updateRes.status}`);
         
-        // Очищаем отправленные изменения
         for (const key in changesToSend) delete pendingChanges[key];
-        if (!silent) showSyncStatus(`✅ Сохранено в Gist`, "success");
+        if (!silent) showSyncStatus(`✅ Сохранено`, "success");
         return true;
         
     } catch (error) {
@@ -724,7 +816,6 @@ function initDefaultApril() {
     }
 }
 
-// ========== ОТРИСОВКА (без изменений) ==========
 function renderCalendar() {
     const calendarDiv = document.getElementById("calendar");
     if (!calendarDiv) return;
@@ -781,10 +872,6 @@ function renderCalendar() {
     document.getElementById("monthYearLabel").innerHTML = `${monthNames[currentMonth]} ${currentYear}`;
 }
 
-// ... (функции openEditModal, parseScheduleFromText, importSchedule, resetCurrentMonth, changeMonth, exportPNG, exportPDF остаются точно такими же как в оригинале, я пропущу их для краткости, они работают без изменений) ...
-// ВАЖНО: Вставьте сюда оригинальные функции openEditModal, importSchedule, resetCurrentMonth, changeMonth, exportPNG, exportPDF из вашего кода.
-
-// ========== КОПИЯ ОСТАЛЬНЫХ ФУНКЦИЙ ==========
 function openEditModal(day) {
     const existing = getDayData(currentYear, currentMonth, day);
     const modal = document.getElementById("editModal");
@@ -835,11 +922,11 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
         const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
         if (!dateMatch) continue;
         let day = parseInt(dateMatch[1]), month = parseInt(dateMatch[2]), year = parseInt(dateMatch[3]);
-        if (year !== targetYear || month !== (targetMonth + 1)) { errors.push(`${line} - не соответствует текущему месяцу`); continue; }
+        if (year !== targetYear || month !== (targetMonth + 1)) { errors.push(`${line} - неверный месяц`); continue; }
         if (day < 1 || day > new Date(year, month, 0).getDate()) { errors.push(`${line} - неверный день`); continue; }
         i++;
         while (i < lines.length && !lines[i].trim()) i++;
-        if (i >= lines.length) { errors.push(`${line} - не указана смена`); break; }
+        if (i >= lines.length) { errors.push(`${line} - нет смены`); break; }
         let shiftDesc = lines[i].trim();
         i++;
         while (i < lines.length && /^\d+$/.test(lines[i].trim())) i++;
@@ -858,8 +945,8 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
 
 async function importSchedule(rawText) {
     const { updates, errors } = parseScheduleFromText(rawText, currentYear, currentMonth);
-    if (errors.length > 0) alert(`⚠️ Найдены ошибки:\n${errors.join('\n')}`);
-    if (Object.keys(updates).length === 0) { alert("❌ Не найдено корректных дат"); return false; }
+    if (errors.length > 0) alert(`⚠️ Ошибки:\n${errors.join('\n')}`);
+    if (Object.keys(updates).length === 0) { alert("❌ Нет корректных дат"); return false; }
     for (const [key, value] of Object.entries(updates)) { scheduleData[key] = value; pendingChanges[key] = value; }
     renderCalendar();
     saveToGistDebounced();
@@ -868,14 +955,14 @@ async function importSchedule(rawText) {
 }
 
 async function resetCurrentMonth() {
-    if (!confirm(`⚠️ Сбросить все данные для ${currentMonth+1}.${currentYear}?`)) return;
+    if (!confirm(`⚠️ Сбросить ${currentMonth+1}.${currentYear}?`)) return;
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
         const key = getDateKey(currentYear, currentMonth, d);
         const value = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT, updatedAt: Date.now() };
         scheduleData[key] = value; pendingChanges[key] = value;
     }
-    renderCalendar(); saveToGistDebounced(); alert("✅ Данные сброшены");
+    renderCalendar(); saveToGistDebounced(); alert("✅ Сброшено");
 }
 
 function changeMonth(delta) {
@@ -890,7 +977,7 @@ async function exportPNG() {
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span class="loader"></span> Генерация...'; btn.disabled = true;
     try {
-        const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff", logging: false, useCORS: true });
+        const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff", logging: false });
         const link = document.createElement("a");
         link.download = `calendar_${currentYear}_${String(currentMonth+1).padStart(2,'0')}.png`;
         link.href = canvas.toDataURL(); link.click();
@@ -903,7 +990,7 @@ async function exportPDF() {
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span class="loader"></span> Генерация...'; btn.disabled = true;
     try {
-        const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+        const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
         const imgData = canvas.toDataURL("image/png");
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -919,6 +1006,28 @@ async function exportPDF() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 async function initApp() {
+    // Настройки
+    document.getElementById("settingsBtn").onclick = () => {
+        document.getElementById("gistIdInput").value = GIST_ID;
+        document.getElementById("githubTokenInput").value = GITHUB_TOKEN;
+        document.getElementById("settingsModal").style.display = "flex";
+    };
+    
+    document.getElementById("saveSettingsBtn").onclick = () => {
+        GIST_ID = document.getElementById("gistIdInput").value.trim();
+        GITHUB_TOKEN = document.getElementById("githubTokenInput").value.trim();
+        localStorage.setItem('gist_id', GIST_ID);
+        localStorage.setItem('github_token', GITHUB_TOKEN);
+        document.getElementById("settingsModal").style.display = "none";
+        updateStorageMode();
+        showSyncStatus("⚙️ Настройки сохранены", "success");
+    };
+    
+    document.getElementById("closeSettingsBtn").onclick = () => {
+        document.getElementById("settingsModal").style.display = "none";
+    };
+    
+    // Логин
     document.getElementById("loginBtn").onclick = () => {
         if (document.getElementById("passwordInput").value === VALID_PASSWORD) {
             saveAuthToStorage(); showMainApp(); loadFromGist();
@@ -929,6 +1038,7 @@ async function initApp() {
     document.getElementById("passwordInput").onkeypress = (e) => { if (e.key === "Enter") document.getElementById("loginBtn").click(); };
     document.getElementById("logoutBtn").onclick = () => { clearAuthFromStorage(); scheduleData = {}; pendingChanges = {}; showLoginScreen(); };
     
+    // Импорт
     const importModal = document.getElementById("importModal");
     document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
     document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
@@ -938,6 +1048,7 @@ async function initApp() {
         importModal.style.display = "none";
     };
     
+    // Кнопки управления
     document.getElementById("refreshBtn").onclick = () => loadFromGist();
     document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonth();
     document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
@@ -945,10 +1056,16 @@ async function initApp() {
     document.getElementById("exportPngBtn").onclick = () => exportPNG();
     document.getElementById("exportPdfBtn").onclick = () => exportPDF();
     
+    // Закрытие модалок
     window.onclick = (e) => {
         if (e.target === document.getElementById("editModal")) document.getElementById("editModal").style.display = "none";
         if (e.target === importModal) importModal.style.display = "none";
+        if (e.target === document.getElementById("settingsModal")) document.getElementById("settingsModal").style.display = "none";
     };
+    
+    // Загрузка сохраненных настроек
+    if (localStorage.getItem('gist_id')) GIST_ID = localStorage.getItem('gist_id');
+    if (localStorage.getItem('github_token')) GITHUB_TOKEN = localStorage.getItem('github_token');
     
     if (isAuthenticatedInStorage()) { showMainApp(); await loadFromGist(); }
     else { showLoginScreen(); }
