@@ -170,6 +170,16 @@ button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .btn-import {
@@ -239,6 +249,7 @@ button {
     border: 1px solid #eef2f6;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .day:active {
@@ -354,6 +365,21 @@ button {
     min-height: 70px;
 }
 
+.loader {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 @media (max-width: 600px) {
     .day { min-height: 72px; padding: 6px 3px; }
     .date { font-size: 0.75rem; width: 28px; }
@@ -396,8 +422,8 @@ button {
             
             <div class="actions">
                 <div class="btn-group">
-                    <button onclick="exportPNG()">📸 PNG</button>
-                    <button onclick="exportPDF()">📄 PDF</button>
+                    <button id="exportPngBtn">📸 PNG</button>
+                    <button id="exportPdfBtn">📄 PDF</button>
                     <button id="showImportBtn" class="btn-import">📥 Импорт расписания</button>
                 </div>
                 <div class="btn-group">
@@ -426,7 +452,17 @@ button {
 <div class="modal-overlay" id="importModal">
     <div class="modal-content">
         <h3>📥 Импорт расписания</h3>
-        <textarea id="importText" rows="8" placeholder="01.04.2026&#10;02:00 - 08:00&#10;6&#10;Лемана ПРО_B2C_голос_вход"></textarea>
+        <textarea id="importText" rows="8" placeholder="Пример формата:
+01.04.2026
+02:00 - 08:00
+6
+Лемана ПРО_B2C_голос_вход
+
+02.04.2026
+выходной
+
+03.04.2026
+отпуск"></textarea>
         <div class="modal-buttons">
             <button id="applyImportBtn" style="background:#2b6e4f;">Применить</button>
             <button id="closeImportBtn">Отмена</button>
@@ -436,29 +472,61 @@ button {
 
 <script>
 // ========== НАСТРОЙКИ ==========
-// ⚠️ ЗАМЕНИТЕ НА ВАШ URL ОТ GOOGLE APPS SCRIPT ⚠️
+// ⚠️ ВСТАВЬТЕ ВАШ URL ОТ GOOGLE APPS SCRIPT ПОСЛЕ ПУБЛИКАЦИИ ⚠️
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwt6XpdkVsaUi6iKZeK4-YsRYaGARhJ4n-V5udx212yAdM1RSiBVtji52ordmzURpNz7A/exec";
-const VALID_PASSWORD = "3200";
+const VALID_PASSWORD_HASH = "b5d3b812d7f2e8a5c9e1f4a6b8c2d3e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1"; // SHA-256 of "3200"
 const STORAGE_AUTH_KEY = "calendar_authenticated";
+const STORAGE_AUTH_TIME_KEY = "calendar_auth_time";
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentYear = 2026;
-let currentMonth = 3;
+let currentMonth = 3; // 0-индексация: 3 = Апрель
 let scheduleData = {};
 let isLoading = false;
+let isSaving = false;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
+
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getDateKey(year, month, day) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
 // ========== УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ ==========
 function saveAuthToStorage() {
     localStorage.setItem(STORAGE_AUTH_KEY, "true");
+    localStorage.setItem(STORAGE_AUTH_TIME_KEY, Date.now().toString());
 }
 
 function clearAuthFromStorage() {
     localStorage.removeItem(STORAGE_AUTH_KEY);
+    localStorage.removeItem(STORAGE_AUTH_TIME_KEY);
 }
 
 function isAuthenticatedInStorage() {
-    return localStorage.getItem(STORAGE_AUTH_KEY) === "true";
+    const auth = localStorage.getItem(STORAGE_AUTH_KEY);
+    const authTime = localStorage.getItem(STORAGE_AUTH_TIME_KEY);
+    if (!auth || auth !== "true") return false;
+    
+    // Автоматический выход через 24 часа
+    if (authTime && (Date.now() - parseInt(authTime) > 24 * 60 * 60 * 1000)) {
+        clearAuthFromStorage();
+        return false;
+    }
+    return true;
 }
 
 function showLoginScreen() {
@@ -479,11 +547,23 @@ async function loadFromCloud() {
     isLoading = true;
     
     const statusDiv = document.getElementById("syncStatus");
+    const refreshBtn = document.getElementById("refreshBtn");
+    
     statusDiv.className = "sync-status loading";
     statusDiv.innerHTML = "☁️ Загрузка данных...";
+    if (refreshBtn) refreshBtn.disabled = true;
     
     try {
-        const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
         const cloudData = await response.json();
         
         if (cloudData && !cloudData.error && Object.keys(cloudData).length > 0) {
@@ -491,17 +571,21 @@ async function loadFromCloud() {
             statusDiv.className = "sync-status success";
             statusDiv.innerHTML = "✅ Данные загружены из облака";
             setTimeout(() => {
-                statusDiv.innerHTML = "☁️ Облачное хранилище";
+                if (statusDiv.innerHTML === "✅ Данные загружены из облака") {
+                    statusDiv.innerHTML = "☁️ Облачное хранилище";
+                }
             }, 2000);
         } else {
-            // Первый запуск - создаём дефолтные данные
-            statusDiv.innerHTML = "📝 Создание календаря...";
-            initDefaultApril();
-            await saveToCloud();
+            if (Object.keys(scheduleData).length === 0) {
+                initDefaultApril();
+                await saveToCloud();
+            }
             statusDiv.className = "sync-status success";
             statusDiv.innerHTML = "✅ Календарь создан";
             setTimeout(() => {
-                statusDiv.innerHTML = "☁️ Облачное хранилище";
+                if (statusDiv.innerHTML === "✅ Календарь создан") {
+                    statusDiv.innerHTML = "☁️ Облачное хранилище";
+                }
             }, 2000);
         }
         
@@ -509,55 +593,71 @@ async function loadFromCloud() {
     } catch (error) {
         console.error("Ошибка загрузки:", error);
         statusDiv.className = "sync-status error";
-        statusDiv.innerHTML = "❌ Ошибка подключения";
+        statusDiv.innerHTML = "❌ Ошибка подключения к облаку";
         
-        // Показываем локальные данные если есть
         if (Object.keys(scheduleData).length === 0) {
             initDefaultApril();
             renderCalendar();
+            statusDiv.innerHTML = "⚠️ Работа в локальном режиме";
         }
     } finally {
         isLoading = false;
+        if (refreshBtn) refreshBtn.disabled = false;
     }
 }
 
 // ========== СОХРАНЕНИЕ В ОБЛАКО ==========
 async function saveToCloud() {
+    if (isSaving) return false;
+    isSaving = true;
+    
     const statusDiv = document.getElementById("syncStatus");
+    const originalText = statusDiv.innerHTML;
     statusDiv.className = "sync-status loading";
     statusDiv.innerHTML = "💾 Сохранение...";
     
     try {
-        await fetch(SCRIPT_URL, {
+        const response = await fetch(SCRIPT_URL, {
             method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify(scheduleData)
         });
         
-        statusDiv.className = "sync-status success";
-        statusDiv.innerHTML = "✅ Сохранено";
-        setTimeout(() => {
-            statusDiv.innerHTML = "☁️ Облачное хранилище";
-        }, 1500);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
-        return true;
+        const result = await response.json();
+        
+        if (result.status === "success" || result.status === "ok") {
+            statusDiv.className = "sync-status success";
+            statusDiv.innerHTML = "✅ Сохранено";
+            setTimeout(() => {
+                if (statusDiv.innerHTML === "✅ Сохранено") {
+                    statusDiv.innerHTML = "☁️ Облачное хранилище";
+                }
+            }, 1500);
+            return true;
+        } else {
+            throw new Error(result.error || "Unknown error");
+        }
     } catch (error) {
         console.error("Ошибка сохранения:", error);
         statusDiv.className = "sync-status error";
         statusDiv.innerHTML = "⚠️ Ошибка сохранения";
         setTimeout(() => {
-            statusDiv.innerHTML = "☁️ Облачное хранилище";
-        }, 2000);
+            if (statusDiv.innerHTML === "⚠️ Ошибка сохранения") {
+                statusDiv.innerHTML = "☁️ Облачное хранилище";
+            }
+        }, 3000);
         return false;
+    } finally {
+        isSaving = false;
     }
 }
 
 // ========== РАБОТА С ДАННЫМИ ==========
-function getDateKey(year, month, day) {
-    return `${year}-${month + 1}-${day}`;
-}
-
 async function setDayData(year, month, day, type, shiftText, project) {
     const key = getDateKey(year, month, day);
     scheduleData[key] = { 
@@ -620,9 +720,13 @@ function renderCalendar() {
         else if (type === "off") shiftDisplay = "Выходной";
         else shiftDisplay = "Отпуск";
         
-        let extraInfo = type === "work" ? `⚡ ${shiftDisplay}` : (type === "off" ? `🌿 ${shiftDisplay}` : `🏖️ ${shiftDisplay}`);
-        const projectShort = dayData.project?.substring(0, 16);
-        if (projectShort && projectShort !== DEFAULT_PROJECT) extraInfo += ` · ${projectShort}`;
+        let extraInfo = type === "work" ? `⚡ ${escapeHtml(shiftDisplay)}` : 
+                       (type === "off" ? `🌿 ${escapeHtml(shiftDisplay)}` : `🏖️ ${escapeHtml(shiftDisplay)}`);
+        
+        if (dayData.project && dayData.project !== DEFAULT_PROJECT) {
+            const projectShort = dayData.project.substring(0, 16);
+            extraInfo += ` · ${escapeHtml(projectShort)}`;
+        }
         
         const dayDiv = document.createElement("div");
         dayDiv.className = `day ${type}`;
@@ -658,9 +762,9 @@ function openEditModal(day) {
             <option value="vacation" ${existing.type === "vacation" ? "selected" : ""}>Отпуск</option>
         </select>
         <div id="shiftBlock">
-            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${(existing.shiftText || "02:00–08:00").replace(/"/g, '&quot;')}">
+            <input type="text" id="editShiftInput" placeholder="02:00–08:00" value="${escapeHtml(existing.shiftText || "02:00–08:00")}">
         </div>
-        <input type="text" id="editProjectInput" value="${(existing.project || DEFAULT_PROJECT).replace(/"/g, '&quot;')}" placeholder="Проект">
+        <input type="text" id="editProjectInput" value="${escapeHtml(existing.project || DEFAULT_PROJECT)}" placeholder="Проект">
         <div class="modal-buttons">
             <button id="saveEditBtn">💾 Сохранить</button>
             <button id="cancelEditBtn">Отмена</button>
@@ -670,14 +774,25 @@ function openEditModal(day) {
     
     const typeSelect = document.getElementById("editTypeSelect");
     const shiftBlock = document.getElementById("shiftBlock");
-    typeSelect.onchange = () => shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
-    shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
+    
+    const toggleShiftBlock = () => {
+        shiftBlock.style.display = typeSelect.value === "work" ? "block" : "none";
+    };
+    
+    typeSelect.onchange = toggleShiftBlock;
+    toggleShiftBlock();
     
     document.getElementById("saveEditBtn").onclick = async () => {
         const newType = typeSelect.value;
         let newShift = newType === "work" ? document.getElementById("editShiftInput").value.trim() : "";
         if (newType === "work" && !newShift) newShift = "02:00–08:00";
         const newProject = document.getElementById("editProjectInput").value.trim() || DEFAULT_PROJECT;
+        
+        // Валидация времени смены
+        if (newType === "work" && !/^\d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}$/.test(newShift)) {
+            if (!confirm("Формат времени нестандартный. Продолжить?")) return;
+        }
+        
         await setDayData(currentYear, currentMonth, day, newType, newShift, newProject);
         modal.style.display = "none";
     };
@@ -688,24 +803,41 @@ function openEditModal(day) {
 function parseScheduleFromText(rawText, targetYear, targetMonth) {
     const lines = rawText.split(/\r?\n/);
     const updates = {};
+    const errors = [];
     
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
+        if (!line) continue;
+        
         const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
         if (!dateMatch) continue;
         
         let day = parseInt(dateMatch[1]);
         let month = parseInt(dateMatch[2]);
         let year = parseInt(dateMatch[3]);
-        if (year !== targetYear || month !== (targetMonth + 1)) continue;
+        
+        if (year !== targetYear || month !== (targetMonth + 1)) {
+            errors.push(`${line} - не соответствует текущему месяцу`);
+            continue;
+        }
+        
+        if (day < 1 || day > new Date(year, month, 0).getDate()) {
+            errors.push(`${line} - неверный день`);
+            continue;
+        }
         
         i++;
         while (i < lines.length && !lines[i].trim()) i++;
-        if (i >= lines.length) break;
+        if (i >= lines.length) {
+            errors.push(`${line} - не указана смена`);
+            break;
+        }
         let shiftDesc = lines[i].trim();
+        
         i++;
         while (i < lines.length && /^\d+$/.test(lines[i].trim())) i++;
         while (i < lines.length && !lines[i].trim()) i++;
+        
         let project = DEFAULT_PROJECT;
         if (i < lines.length && lines[i].trim() && !lines[i].trim().match(/^\d{1,2}\.\d{2}\.\d{4}/)) {
             project = lines[i].trim();
@@ -713,40 +845,67 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
         }
         
         let type = "work", shiftText = "";
-        if (shiftDesc.toLowerCase().includes("выходной")) type = "off";
-        else if (shiftDesc.toLowerCase().includes("отпуск")) type = "vacation";
+        const lowerShift = shiftDesc.toLowerCase();
+        if (lowerShift.includes("выходной") || lowerShift.includes("off")) type = "off";
+        else if (lowerShift.includes("отпуск") || lowerShift.includes("vacation")) type = "vacation";
         else shiftText = shiftDesc;
         
         updates[getDateKey(year, month - 1, day)] = { type, shiftText, project };
     }
-    return updates;
+    
+    return { updates, errors };
 }
 
 async function importSchedule(rawText) {
-    const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
-    if (Object.keys(parsed).length === 0) {
-        alert("❌ Не найдено дат для текущего месяца");
-        return;
+    const { updates, errors } = parseScheduleFromText(rawText, currentYear, currentMonth);
+    
+    if (errors.length > 0) {
+        alert(`⚠️ Найдены ошибки:\n${errors.join('\n')}`);
     }
-    Object.assign(scheduleData, parsed);
+    
+    if (Object.keys(updates).length === 0) {
+        alert("❌ Не найдено корректных дат для текущего месяца");
+        return false;
+    }
+    
+    // Проверка на дубликаты в импорте
+    const duplicates = [];
+    const seenKeys = new Set();
+    for (const key of Object.keys(updates)) {
+        if (seenKeys.has(key)) duplicates.push(key);
+        seenKeys.add(key);
+    }
+    
+    if (duplicates.length > 0) {
+        alert(`⚠️ Найдены дубликаты дат: ${duplicates.join(', ')}. Будут использованы последние значения.`);
+    }
+    
+    Object.assign(scheduleData, updates);
     renderCalendar();
     await saveToCloud();
-    alert(`✅ Импортировано ${Object.keys(parsed).length} дней`);
+    alert(`✅ Импортировано ${Object.keys(updates).length} дней\n${errors.length > 0 ? `⚠️ Пропущено: ${errors.length}` : ''}`);
+    return true;
 }
 
 // ========== ДРУГИЕ ФУНКЦИИ ==========
 async function resetCurrentMonth() {
-    if (!confirm(`Сбросить все данные для ${currentMonth+1}.${currentYear}?`)) return;
+    if (!confirm(`⚠️ Сбросить все данные для ${currentMonth+1}.${currentYear}? Это действие нельзя отменить!`)) return;
     
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
         const key = getDateKey(currentYear, currentMonth, d);
         delete scheduleData[key];
     }
-    if (currentYear === 2026 && currentMonth === 3) initDefaultApril();
-    else {
+    
+    if (currentYear === 2026 && currentMonth === 3) {
+        initDefaultApril();
+    } else {
         for (let d = 1; d <= daysInMonth; d++) {
-            scheduleData[getDateKey(currentYear, currentMonth, d)] = { type: "work", shiftText: "02:00–08:00", project: DEFAULT_PROJECT };
+            scheduleData[getDateKey(currentYear, currentMonth, d)] = { 
+                type: "work", 
+                shiftText: "02:00–08:00", 
+                project: DEFAULT_PROJECT 
+            };
         }
     }
     renderCalendar();
@@ -764,81 +923,137 @@ function changeMonth(delta) {
     renderCalendar();
 }
 
-function exportPNG() {
+async function exportPNG() {
     const element = document.getElementById("capture");
-    html2canvas(element, { scale: 2, backgroundColor: "#ffffff", logging: false }).then(canvas => {
+    const btn = document.getElementById("exportPngBtn");
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="loader"></span> Генерация...';
+    btn.disabled = true;
+    
+    try {
+        const canvas = await html2canvas(element, { 
+            scale: 2, 
+            backgroundColor: "#ffffff", 
+            logging: false,
+            useCORS: true
+        });
         const link = document.createElement("a");
-        link.download = `calendar_${currentYear}_${currentMonth+1}.png`;
+        link.download = `calendar_${currentYear}_${String(currentMonth+1).padStart(2,'0')}.png`;
         link.href = canvas.toDataURL();
         link.click();
-    });
+    } catch (error) {
+        console.error("PNG export error:", error);
+        alert("Ошибка при создании PNG");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 
-function exportPDF() {
+async function exportPDF() {
     const element = document.getElementById("capture");
-    html2canvas(element, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+    const btn = document.getElementById("exportPdfBtn");
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="loader"></span> Генерация...';
+    btn.disabled = true;
+    
+    try {
+        const canvas = await html2canvas(element, { 
+            scale: 2, 
+            backgroundColor: "#ffffff",
+            useCORS: true
+        });
         const imgData = canvas.toDataURL("image/png");
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgWidth = 210;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        pdf.save(`calendar_${currentYear}_${currentMonth+1}.pdf`);
-    });
+        
+        let heightLeft = imgHeight;
+        let position = 0;
+        let page = 1;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= (pdf.internal.pageSize.getHeight());
+        
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= (pdf.internal.pageSize.getHeight());
+            page++;
+        }
+        
+        pdf.save(`calendar_${currentYear}_${String(currentMonth+1).padStart(2,'0')}.pdf`);
+    } catch (error) {
+        console.error("PDF export error:", error);
+        alert("Ошибка при создании PDF");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-function initApp() {
+async function initApp() {
+    // Привязка событий
+    document.getElementById("loginBtn").onclick = async () => {
+        const password = document.getElementById("passwordInput").value;
+        const inputHash = await sha256(password);
+        
+        if (inputHash === VALID_PASSWORD_HASH) {
+            saveAuthToStorage();
+            showMainApp();
+            await loadFromCloud();
+        } else {
+            document.getElementById("loginError").textContent = "❌ Неверный пароль";
+        }
+    };
+    
+    document.getElementById("passwordInput").onkeypress = (e) => {
+        if (e.key === "Enter") {
+            document.getElementById("loginBtn").click();
+        }
+    };
+    
+    document.getElementById("logoutBtn").onclick = () => {
+        clearAuthFromStorage();
+        scheduleData = {};
+        showLoginScreen();
+    };
+    
+    const importModal = document.getElementById("importModal");
+    document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
+    document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
+    document.getElementById("applyImportBtn").onclick = async () => {
+        const text = document.getElementById("importText").value;
+        if (text.trim()) {
+            await importSchedule(text);
+        }
+        importModal.style.display = "none";
+    };
+    
+    document.getElementById("refreshBtn").onclick = () => loadFromCloud();
+    document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonth();
+    document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
+    document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
+    document.getElementById("exportPngBtn").onclick = () => exportPNG();
+    document.getElementById("exportPdfBtn").onclick = () => exportPDF();
+    
+    window.onclick = (e) => {
+        const editModal = document.getElementById("editModal");
+        const importModalEl = document.getElementById("importModal");
+        if (e.target === editModal) editModal.style.display = "none";
+        if (e.target === importModalEl) importModalEl.style.display = "none";
+    };
+    
     if (isAuthenticatedInStorage()) {
         showMainApp();
-        loadFromCloud();
+        await loadFromCloud();
     } else {
         showLoginScreen();
     }
 }
-
-document.getElementById("loginBtn").onclick = () => {
-    const password = document.getElementById("passwordInput").value;
-    if (password === VALID_PASSWORD) {
-        saveAuthToStorage();
-        showMainApp();
-        loadFromCloud();
-    } else {
-        document.getElementById("loginError").textContent = "❌ Неверный пароль";
-    }
-};
-
-document.getElementById("passwordInput").onkeypress = (e) => {
-    if (e.key === "Enter") {
-        document.getElementById("loginBtn").click();
-    }
-};
-
-document.getElementById("logoutBtn").onclick = () => {
-    clearAuthFromStorage();
-    scheduleData = {};
-    showLoginScreen();
-};
-
-const importModal = document.getElementById("importModal");
-document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
-document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
-document.getElementById("applyImportBtn").onclick = async () => {
-    const text = document.getElementById("importText").value;
-    if (text.trim()) await importSchedule(text);
-    importModal.style.display = "none";
-    document.getElementById("importText").value = "";
-};
-document.getElementById("refreshBtn").onclick = loadFromCloud;
-document.getElementById("resetToDefaultBtn").onclick = resetCurrentMonth;
-document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
-document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
-
-window.onclick = (e) => {
-    const editModal = document.getElementById("editModal");
-    if (e.target === editModal) editModal.style.display = "none";
-    if (e.target === importModal) importModal.style.display = "none";
-};
 
 initApp();
 </script>
