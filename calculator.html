@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             background: white;
             border-radius: 32px;
@@ -162,17 +162,18 @@
             margin-bottom: 24px;
             max-height: 400px;
             overflow-y: auto;
+            border-radius: 16px;
         }
 
         .days-header {
             display: grid;
-            grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr;
+            grid-template-columns: 0.8fr 0.8fr 1fr 1fr 1fr;
             gap: 8px;
             padding: 12px 8px;
             background: #f1f5f9;
             border-radius: 16px;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #475569;
             margin-bottom: 8px;
             position: sticky;
@@ -181,7 +182,7 @@
 
         .day-row {
             display: grid;
-            grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr;
+            grid-template-columns: 0.8fr 0.8fr 1fr 1fr 1fr;
             gap: 8px;
             padding: 12px 8px;
             border-bottom: 1px solid #f1f5f9;
@@ -191,31 +192,39 @@
         .day-name {
             font-weight: 500;
             color: #1e293b;
+            font-size: 0.9rem;
         }
 
         .day-date {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #64748b;
         }
 
         .day-type {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             padding: 4px 8px;
             border-radius: 12px;
             text-align: center;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .type-work { background: #dbeafe; color: #1e40af; }
         .type-off { background: #fef3c7; color: #92400e; }
         .type-vacation { background: #d1fae5; color: #065f46; }
 
+        .shift-info {
+            font-size: 0.7rem;
+            color: #64748b;
+            text-align: center;
+        }
+
         .hours-input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 8px 10px;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             text-align: center;
         }
 
@@ -228,6 +237,7 @@
             text-align: right;
             font-weight: 600;
             color: #4c1d95;
+            font-size: 0.9rem;
         }
 
         .summary-section {
@@ -461,10 +471,10 @@
     <div class="container">
         <div class="nav-bar">
             <a href="index.html" class="back-btn">← Назад к календарю</a>
-            <h1>💰 Калькулятор</h1>
+            <h1>💰 Калькулятор ЗП</h1>
         </div>
         <div class="subtitle">
-            <span>Лемана ПРО — почасовой расчет</span>
+            <span>Лемана ПРО — расчёт по часам</span>
             <span class="sync-badge" id="syncBadge">⚡ Синхронизация с Gist</span>
         </div>
 
@@ -491,7 +501,8 @@
         <div class="days-grid">
             <div class="days-header">
                 <span>День</span>
-                <span>Тип</span>
+                <span>Дата</span>
+                <span>Статус</span>
                 <span>Часы</span>
                 <span>Сумма</span>
             </div>
@@ -499,8 +510,8 @@
         </div>
 
         <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <button class="btn-secondary" style="flex:1; padding: 10px;" id="loadFromCalendarBtn">📅 Загрузить из календаря</button>
-            <button class="btn-secondary" style="flex:1; padding: 10px;" id="clearHoursBtn">🧹 Очистить</button>
+            <button class="btn-warning" style="flex:1; padding: 10px;" id="loadFromCalendarBtn">📅 Загрузить из календаря</button>
+            <button class="btn-secondary" style="flex:1; padding: 10px;" id="clearHoursBtn">🧹 Очистить часы</button>
         </div>
 
         <div class="summary-section">
@@ -526,7 +537,7 @@
         <div class="history-section">
             <div class="history-title">
                 <h3>📚 История периодов</h3>
-                <div>
+                <div style="display: flex; gap: 8px;">
                     <button class="btn-secondary" style="padding: 8px 16px;" id="loadHistoryBtn">☁️ Загрузить</button>
                     <button class="btn-secondary" style="padding: 8px 16px;" id="clearHistoryBtn">🗑️ Очистить</button>
                 </div>
@@ -594,6 +605,38 @@
                 badge.style.background = '#fee2e2';
                 badge.style.color = '#991b1b';
             }
+        }
+
+        // ========== ПАРСИНГ ВРЕМЕНИ СМЕНЫ ==========
+        function parseShiftHours(shiftText) {
+            if (!shiftText) return 8; // По умолчанию 8 часов
+            
+            // Поддерживаем оба формата: "02:00 - 08:00" и "02:00–08:00"
+            const timeMatch = shiftText.match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);
+            
+            if (timeMatch) {
+                const startHour = parseInt(timeMatch[1]);
+                const startMin = parseInt(timeMatch[2]);
+                const endHour = parseInt(timeMatch[3]);
+                const endMin = parseInt(timeMatch[4]);
+                
+                let hours = (endHour + endMin/60) - (startHour + startMin/60);
+                if (hours < 0) hours += 24; // Если смена переходит через полночь
+                
+                return hours;
+            }
+            
+            // Пробуем найти просто числа
+            const numbersMatch = shiftText.match(/(\d+)/g);
+            if (numbersMatch && numbersMatch.length >= 2) {
+                const start = parseInt(numbersMatch[0]);
+                const end = parseInt(numbersMatch[1]);
+                let hours = end - start;
+                if (hours < 0) hours += 24;
+                return hours;
+            }
+            
+            return 8; // По умолчанию 8 часов
         }
 
         // ========== РАБОТА С GITHUB GIST ==========
@@ -668,13 +711,11 @@
             }
 
             try {
-                // Получаем текущий Gist
                 const getRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                     headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
                 });
                 const gistData = await getRes.json();
                 
-                // Обновляем только salary-data.json
                 const updateRes = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                     method: "PATCH",
                     headers: {
@@ -709,35 +750,53 @@
                 return;
             }
 
-            const startDate = new Date(document.getElementById('startDate').value);
-            const endDate = new Date(document.getElementById('endDate').value);
-
+            let loadedCount = 0;
+            
             currentDays.forEach(day => {
                 const dateKey = day.date;
                 const calendarEntry = data[dateKey];
                 
                 if (calendarEntry) {
-                    // Если рабочий день - ставим 8 часов (можно парсить из shiftText)
+                    // Обновляем тип дня
+                    day.type = calendarEntry.type || 'work';
+                    day.shiftText = calendarEntry.shiftText || '';
+                    
+                    // Если рабочий день - считаем часы
                     if (calendarEntry.type === 'work') {
-                        // Пробуем извлечь часы из shiftText (например "02:00–08:00" = 6 часов)
-                        const shiftText = calendarEntry.shiftText || '';
-                        const match = shiftText.match(/(\d+):00[–-](\d+):00/);
-                        if (match) {
-                            const start = parseInt(match[1]);
-                            const end = parseInt(match[2]);
-                            let hours = end - start;
-                            if (hours < 0) hours += 24;
-                            day.hours = hours;
-                        } else {
-                            day.hours = 8; // По умолчанию 8 часов
-                        }
+                        day.hours = parseShiftHours(calendarEntry.shiftText);
+                        loadedCount++;
                     } else {
                         day.hours = 0; // Выходной или отпуск
+                    }
+                    
+                    // Обновляем отображение в строке
+                    const row = document.querySelector(`.day-row[data-date="${day.date}"]`);
+                    if (row) {
+                        const typeSpan = row.querySelector('.day-type');
+                        const shiftSpan = row.querySelector('.shift-info');
+                        
+                        if (typeSpan) {
+                            typeSpan.className = 'day-type';
+                            if (day.type === 'work') {
+                                typeSpan.classList.add('type-work');
+                                typeSpan.textContent = 'Работа';
+                            } else if (day.type === 'off') {
+                                typeSpan.classList.add('type-off');
+                                typeSpan.textContent = 'Выходной';
+                            } else if (day.type === 'vacation') {
+                                typeSpan.classList.add('type-vacation');
+                                typeSpan.textContent = 'Отпуск';
+                            }
+                        }
+                        
+                        if (shiftSpan) {
+                            shiftSpan.textContent = day.shiftText || (day.type === 'work' ? '8 ч' : '—');
+                        }
                     }
                 }
             });
 
-            // Обновляем инпуты
+            // Обновляем инпуты и суммы
             currentDays.forEach(day => {
                 const input = document.querySelector(`[data-date="${day.date}"]`);
                 if (input) {
@@ -748,7 +807,7 @@
 
             calculateTotal();
             hideLoading();
-            alert('✅ Часы загружены из календаря');
+            alert(`✅ Загружено: ${loadedCount} рабочих дней`);
         }
 
         // ========== ГЕНЕРАЦИЯ ДНЕЙ ==========
@@ -770,14 +829,18 @@
                 const dateStr = currentDate.toISOString().split('T')[0];
                 const dayOfWeek = currentDate.toLocaleDateString('ru-RU', { weekday: 'short' });
                 const dayOfMonth = currentDate.getDate();
+                const monthShort = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
                 
-                // Получаем тип дня из календаря
+                // Получаем тип дня из уже загруженных данных календаря
                 let dayType = 'work';
                 let typeClass = 'type-work';
                 let typeText = 'Работа';
+                let shiftText = '';
                 
                 if (calendarData[dateStr]) {
                     dayType = calendarData[dateStr].type;
+                    shiftText = calendarData[dateStr].shiftText || '';
+                    
                     if (dayType === 'off') {
                         typeClass = 'type-off';
                         typeText = 'Выходной';
@@ -792,6 +855,7 @@
                     dayName: dayOfWeek,
                     dayNum: dayOfMonth,
                     type: dayType,
+                    shiftText: shiftText,
                     hours: 0
                 };
                 
@@ -804,10 +868,13 @@
                 row.innerHTML = `
                     <div>
                         <div class="day-name">${dayOfWeek}</div>
-                        <div class="day-date">${dayOfMonth} ${currentDate.toLocaleDateString('ru-RU', { month: 'short' })}</div>
+                    </div>
+                    <div>
+                        <div class="day-date">${dayOfMonth} ${monthShort}</div>
                     </div>
                     <div>
                         <span class="day-type ${typeClass}">${typeText}</span>
+                        <div class="shift-info">${shiftText || (dayType === 'work' ? '8 ч' : '—')}</div>
                     </div>
                     <div>
                         <input type="number" 
@@ -827,6 +894,7 @@
                 currentDate.setDate(currentDate.getDate() + 1);
             }
             
+            // Привязываем события к инпутам
             document.querySelectorAll('.hours-input').forEach(input => {
                 input.addEventListener('input', (e) => {
                     const date = e.target.dataset.date;
@@ -846,7 +914,7 @@
             const totalEl = document.querySelector(`[data-total="${date}"]`);
             if (totalEl) {
                 const amount = hours * hourlyRate;
-                totalEl.textContent = `${Math.round(amount)} ₽`;
+                totalEl.textContent = `${Math.round(amount).toLocaleString()} ₽`;
             }
         }
 
@@ -887,7 +955,12 @@
                 id: Date.now(),
                 startDate,
                 endDate,
-                days: currentDays.map(d => ({ date: d.date, hours: d.hours, type: d.type })),
+                days: currentDays.map(d => ({ 
+                    date: d.date, 
+                    hours: d.hours, 
+                    type: d.type,
+                    shiftText: d.shiftText 
+                })),
                 totalHours: stats.totalHours,
                 workedDays: stats.workedDays,
                 totalSalary: stats.totalSalary,
@@ -903,7 +976,6 @@
             
             renderHistory();
             
-            // Сохраняем в Gist
             if (GIST_ID && GITHUB_TOKEN) {
                 showLoading('Сохранение в Gist...');
                 const success = await saveSalaryToGist();
@@ -912,10 +984,10 @@
                 if (success) {
                     alert(`✅ Период сохранен в Gist!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
                 } else {
-                    alert(`⚠️ Сохранено локально (Gist недоступен)\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
+                    alert(`⚠️ Сохранено локально\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
                 }
             } else {
-                alert(`✅ Период сохранен локально!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽\n\nНастройте Gist для облачного сохранения.`);
+                alert(`✅ Период сохранен локально!\nЧасов: ${stats.totalHours.toFixed(1)}\nСумма: ${Math.round(stats.totalSalary).toLocaleString()} ₽`);
             }
         }
 
@@ -1057,7 +1129,6 @@
 
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         async function init() {
-            // Загружаем настройки Gist
             GIST_ID = localStorage.getItem('gist_id') || '';
             GITHUB_TOKEN = localStorage.getItem('github_token') || '';
             
@@ -1067,7 +1138,6 @@
             
             updateSyncBadge();
             
-            // Если есть Gist ID, загружаем календарь для отображения типов дней
             if (GIST_ID) {
                 showLoading('Загрузка календаря...');
                 await loadCalendarFromGist();
@@ -1075,10 +1145,9 @@
             }
             
             const today = new Date();
-            const weekAgo = new Date(today);
-            weekAgo.setDate(today.getDate() - 6);
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
             
-            document.getElementById('startDate').valueAsDate = weekAgo;
+            document.getElementById('startDate').valueAsDate = monthStart;
             document.getElementById('endDate').valueAsDate = today;
             
             generateDays();
