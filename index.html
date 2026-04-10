@@ -32,7 +32,6 @@ body {
     padding: 16px 16px 24px 16px;
 }
 
-/* Стили для входа */
 .login-container {
     max-width: 400px;
     margin: 100px auto;
@@ -65,10 +64,10 @@ body {
     padding: 12px;
     font-size: 1rem;
     background: #2b6e4f;
-}
-
-.login-container button:hover {
-    background: #1e5940;
+    color: white;
+    border: none;
+    border-radius: 60px;
+    cursor: pointer;
 }
 
 .error-message {
@@ -109,6 +108,10 @@ h1 {
     background: #ef4444;
     padding: 4px 12px;
     font-size: 0.7rem;
+    border: none;
+    border-radius: 40px;
+    color: white;
+    cursor: pointer;
 }
 
 .month-nav {
@@ -129,15 +132,7 @@ h1 {
     height: 36px;
     border-radius: 40px;
     cursor: pointer;
-    transition: 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.month-nav button:active {
-    transform: scale(0.94);
 }
 
 .month-nav span {
@@ -171,16 +166,10 @@ button {
     font-weight: 600;
     background: #1e293b;
     color: white;
-    transition: 0.2s;
     font-size: 0.8rem;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-button:active {
-    transform: scale(0.96);
 }
 
 .btn-import {
@@ -377,7 +366,6 @@ button:active {
 <body>
 
 <div id="app">
-    <!-- Экран входа -->
     <div id="loginScreen" style="display: none;">
         <div class="login-container">
             <h2>🔐 Вход в календарь</h2>
@@ -388,7 +376,6 @@ button:active {
         </div>
     </div>
 
-    <!-- Основное приложение -->
     <div id="mainApp" style="display: none;">
         <div class="container" id="capture">
             <div class="header-flex">
@@ -449,7 +436,8 @@ button:active {
 
 <script>
 // ========== НАСТРОЙКИ ==========
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweUql7Oxz70dVGGd32Fi0kU1i8mxLKAxdKfdWMxrL_mvsTWQY4Q-TxDrSo3lX6Sef6tg/exec";
+// ⚠️ ЗАМЕНИТЕ НА ВАШ URL ОТ GOOGLE APPS SCRIPT ⚠️
+const SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_ID/exec";
 const VALID_PASSWORD = "3200";
 const STORAGE_AUTH_KEY = "calendar_authenticated";
 
@@ -458,8 +446,6 @@ let currentYear = 2026;
 let currentMonth = 3;
 let scheduleData = {};
 let isLoading = false;
-let isAuthenticated = false;
-let isDataLoaded = false; // Флаг, чтобы не создавать дефолтные данные повторно
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 
 // ========== УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ ==========
@@ -497,23 +483,18 @@ async function loadFromCloud() {
     statusDiv.innerHTML = "☁️ Загрузка данных...";
     
     try {
-        const response = await fetch(`${SCRIPT_URL}?action=load&t=${Date.now()}`);
+        const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
         const cloudData = await response.json();
         
-        // Проверяем, есть ли данные в облаке
-        const hasCloudData = cloudData && Object.keys(cloudData).length > 0;
-        
-        if (hasCloudData) {
-            // Данные есть в облаке - загружаем их
+        if (cloudData && !cloudData.error && Object.keys(cloudData).length > 0) {
             scheduleData = cloudData;
             statusDiv.className = "sync-status success";
             statusDiv.innerHTML = "✅ Данные загружены из облака";
             setTimeout(() => {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
-            isDataLoaded = true;
         } else {
-            // Облако пустое - это первый вход когда-либо
+            // Первый запуск - создаём дефолтные данные
             statusDiv.innerHTML = "📝 Создание календаря...";
             initDefaultApril();
             await saveToCloud();
@@ -522,18 +503,18 @@ async function loadFromCloud() {
             setTimeout(() => {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }, 2000);
-            isDataLoaded = true;
         }
         
         renderCalendar();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
         statusDiv.className = "sync-status error";
-        statusDiv.innerHTML = "❌ Ошибка подключения к облаку";
+        statusDiv.innerHTML = "❌ Ошибка подключения";
         
-        // Только если нет данных и это не загрузка, показываем ошибку
-        if (!isDataLoaded) {
-            alert("Не удалось подключиться к облачному хранилищу. Проверьте интернет-соединение.");
+        // Показываем локальные данные если есть
+        if (Object.keys(scheduleData).length === 0) {
+            initDefaultApril();
+            renderCalendar();
         }
     } finally {
         isLoading = false;
@@ -542,8 +523,6 @@ async function loadFromCloud() {
 
 // ========== СОХРАНЕНИЕ В ОБЛАКО ==========
 async function saveToCloud() {
-    if (!isDataLoaded) return false;
-    
     const statusDiv = document.getElementById("syncStatus");
     statusDiv.className = "sync-status loading";
     statusDiv.innerHTML = "💾 Сохранение...";
@@ -808,11 +787,9 @@ function exportPDF() {
     });
 }
 
-// ========== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ==========
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
 function initApp() {
-    // Проверяем, есть ли сохранённая авторизация
     if (isAuthenticatedInStorage()) {
-        isAuthenticated = true;
         showMainApp();
         loadFromCloud();
     } else {
@@ -820,11 +797,9 @@ function initApp() {
     }
 }
 
-// Обработчики для входа
 document.getElementById("loginBtn").onclick = () => {
     const password = document.getElementById("passwordInput").value;
     if (password === VALID_PASSWORD) {
-        isAuthenticated = true;
         saveAuthToStorage();
         showMainApp();
         loadFromCloud();
@@ -841,13 +816,10 @@ document.getElementById("passwordInput").onkeypress = (e) => {
 
 document.getElementById("logoutBtn").onclick = () => {
     clearAuthFromStorage();
-    isAuthenticated = false;
-    isDataLoaded = false;
     scheduleData = {};
     showLoginScreen();
 };
 
-// Обработчики основного приложения
 const importModal = document.getElementById("importModal");
 document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
 document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
@@ -862,14 +834,12 @@ document.getElementById("resetToDefaultBtn").onclick = resetCurrentMonth;
 document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
 document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
 
-// Закрытие модалок по клику вне
 window.onclick = (e) => {
     const editModal = document.getElementById("editModal");
     if (e.target === editModal) editModal.style.display = "none";
     if (e.target === importModal) importModal.style.display = "none";
 };
 
-// Запуск приложения
 initApp();
 </script>
 </body>
