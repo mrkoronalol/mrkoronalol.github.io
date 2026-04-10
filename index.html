@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-/* Все стили оставлены без изменений */
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -32,49 +31,6 @@ body {
     padding: 16px 16px 24px 16px;
 }
 
-/* Стили для модального окна настроек */
-.settings-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    padding: 16px;
-}
-
-.settings-content {
-    background: white;
-    padding: 24px;
-    border-radius: 32px;
-    max-width: 500px;
-    width: 90%;
-}
-
-.settings-content input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border-radius: 12px;
-    border: 1px solid #cbd5e1;
-    font-family: monospace;
-}
-
-.info-box {
-    background: #f1f5f9;
-    padding: 12px;
-    border-radius: 12px;
-    margin: 16px 0;
-    font-size: 0.85rem;
-}
-
-.info-box a {
-    color: #3b82f6;
-    text-decoration: none;
-}
-
-/* Остальные стили как были */
 .login-container {
     max-width: 400px;
     margin: 100px auto;
@@ -140,11 +96,12 @@ h1 {
 .user-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: #f1f5f9;
-    padding: 4px 12px 4px 16px;
+    padding: 4px 8px 4px 16px;
     border-radius: 40px;
     font-size: 0.85rem;
+    flex-wrap: wrap;
 }
 
 .logout-btn, .settings-btn {
@@ -163,6 +120,16 @@ h1 {
 .settings-btn {
     background: #64748b;
     color: white;
+}
+
+.calc-btn {
+    background: #f59e0b !important;
+    color: white;
+    margin-right: 4px;
+}
+
+.calc-btn:hover {
+    background: #d97706 !important;
 }
 
 .month-nav {
@@ -431,12 +398,54 @@ button:disabled {
     100% { transform: rotate(360deg); }
 }
 
+.settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+}
+
+.settings-content {
+    background: white;
+    padding: 24px;
+    border-radius: 32px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.settings-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    font-family: monospace;
+}
+
+.info-box {
+    background: #f1f5f9;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 16px 0;
+    font-size: 0.85rem;
+}
+
+.info-box a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
 @media (max-width: 600px) {
     .day { min-height: 72px; padding: 6px 3px; }
     .date { font-size: 0.75rem; width: 28px; }
     .day-text { font-size: 0.6rem; }
     .month-nav span { font-size: 0.85rem; min-width: 90px; }
     button { padding: 6px 12px; font-size: 0.7rem; }
+    .user-info { padding: 4px 8px; }
 }
 </style>
 </head>
@@ -459,9 +468,9 @@ button:disabled {
                 <h1>📅 Рабочий календарь</h1>
                 <div class="user-info">
                     <a href="calculator.html" style="text-decoration: none;">
-                        <button type="button" style="background: #f59e0b; margin-right: 8px;">💰 Калькулятор</button>
+                        <button type="button" class="calc-btn">💰 Калькулятор</button>
                     </a>
-                    <button id="settingsBtn" class="settings-btn">⚙️ Настройки</button>
+                    <button id="settingsBtn" class="settings-btn">⚙️</button>
                     <button id="logoutBtn" class="logout-btn">Выйти</button>
                 </div>
             </div>
@@ -499,13 +508,12 @@ button:disabled {
     </div>
 </div>
 
-<!-- Модальное окно настроек -->
 <div class="settings-modal" id="settingsModal">
     <div class="settings-content">
         <h3>⚙️ Настройки GitHub Gist</h3>
         
         <label>Gist ID:</label>
-        <input type="text" id="gistIdInput" placeholder="Например: 57f8154896ed2c5e3e275096b6da9c2c">
+        <input type="text" id="gistIdInput" placeholder="57f8154896ed2c5e3e275096b6da9c2c">
         
         <label>GitHub Token (для сохранения):</label>
         <input type="password" id="githubTokenInput" placeholder="ghp_..." autocomplete="off">
@@ -546,7 +554,7 @@ button:disabled {
 </div>
 
 <script>
-// ========== НАСТРОЙКИ (БЕЗОПАСНО - ВВОДИТ ПОЛЬЗОВАТЕЛЬ) ==========
+// ========== НАСТРОЙКИ ==========
 let GIST_ID = localStorage.getItem('gist_id') || '';
 let GITHUB_TOKEN = localStorage.getItem('github_token') || '';
 const GIST_FILENAME = "calendar-data.json";
@@ -672,11 +680,8 @@ async function loadFromGist() {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error("Неверный токен");
-            } else if (response.status === 404) {
-                throw new Error("Gist не найден");
-            }
+            if (response.status === 401) throw new Error("Неверный токен");
+            else if (response.status === 404) throw new Error("Gist не найден");
             throw new Error(`HTTP ${response.status}`);
         }
         
@@ -1009,7 +1014,6 @@ async function exportPDF() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 async function initApp() {
-    // Настройки
     document.getElementById("settingsBtn").onclick = () => {
         document.getElementById("gistIdInput").value = GIST_ID;
         document.getElementById("githubTokenInput").value = GITHUB_TOKEN;
@@ -1030,7 +1034,6 @@ async function initApp() {
         document.getElementById("settingsModal").style.display = "none";
     };
     
-    // Логин
     document.getElementById("loginBtn").onclick = () => {
         if (document.getElementById("passwordInput").value === VALID_PASSWORD) {
             saveAuthToStorage(); showMainApp(); loadFromGist();
@@ -1041,7 +1044,6 @@ async function initApp() {
     document.getElementById("passwordInput").onkeypress = (e) => { if (e.key === "Enter") document.getElementById("loginBtn").click(); };
     document.getElementById("logoutBtn").onclick = () => { clearAuthFromStorage(); scheduleData = {}; pendingChanges = {}; showLoginScreen(); };
     
-    // Импорт
     const importModal = document.getElementById("importModal");
     document.getElementById("showImportBtn").onclick = () => importModal.style.display = "flex";
     document.getElementById("closeImportBtn").onclick = () => importModal.style.display = "none";
@@ -1051,7 +1053,6 @@ async function initApp() {
         importModal.style.display = "none";
     };
     
-    // Кнопки управления
     document.getElementById("refreshBtn").onclick = () => loadFromGist();
     document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonth();
     document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
@@ -1059,14 +1060,12 @@ async function initApp() {
     document.getElementById("exportPngBtn").onclick = () => exportPNG();
     document.getElementById("exportPdfBtn").onclick = () => exportPDF();
     
-    // Закрытие модалок
     window.onclick = (e) => {
         if (e.target === document.getElementById("editModal")) document.getElementById("editModal").style.display = "none";
         if (e.target === importModal) importModal.style.display = "none";
         if (e.target === document.getElementById("settingsModal")) document.getElementById("settingsModal").style.display = "none";
     };
     
-    // Загрузка сохраненных настроек
     if (localStorage.getItem('gist_id')) GIST_ID = localStorage.getItem('gist_id');
     if (localStorage.getItem('github_token')) GITHUB_TOKEN = localStorage.getItem('github_token');
     
