@@ -474,7 +474,9 @@ button:disabled {
 // ========== НАСТРОЙКИ ==========
 // ⚠️ ВСТАВЬТЕ ВАШ URL ОТ GOOGLE APPS SCRIPT ПОСЛЕ ПУБЛИКАЦИИ ⚠️
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzZbP8MjeghUNxZsRHWAS9UvMngE4EydeahK4uKb1vCkCNlct_5GvkNhOmMTz6bFTr4A/exec";
-const VALID_PASSWORD_HASH = "3200"; 
+
+// ПРОСТОЙ ПАРОЛЬ (без хеширования)
+const VALID_PASSWORD = "3200";
 const STORAGE_AUTH_KEY = "calendar_authenticated";
 const STORAGE_AUTH_TIME_KEY = "calendar_auth_time";
 
@@ -484,16 +486,11 @@ let currentMonth = 3; // 0-индексация: 3 = Апрель
 let scheduleData = {};
 let isLoading = false;
 let isSaving = false;
+let syncQueue = []; // Очередь синхронизации
+let isSyncing = false;
 const DEFAULT_PROJECT = "Лемана ПРО_B2C_голос_вход";
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-async function sha256(message) {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -541,7 +538,9 @@ function showMainApp() {
     document.getElementById("mainApp").style.display = "block";
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ ИЗ ОБЛАКА ==========
+// ========== СИНХРОНИЗАЦИЯ С ОБЛАКОМ ==========
+
+// Загрузка данных из облака (всегда берем свежие данные с сервера)
 async function loadFromCloud() {
     if (isLoading) return;
     isLoading = true;
@@ -566,12 +565,22 @@ async function loadFromCloud() {
         
         const cloudData = await response.json();
         
-        if (cloudData && !cloudData.error && Object.keys(cloudData).length > 0) {
+        if (cloudData && !cloudData.error) {
+            // Полностью заменяем локальные данные облачными
             scheduleData = cloudData;
+            
+            // Проверяем, есть ли данные для апреля 2026
+            const aprilKeys = Object.keys(scheduleData).filter(key => key.startsWith('2026-04-'));
+            if (aprilKeys.length === 0) {
+                // Если нет данных для апреля, создаем дефолтные
+                initDefaultApril();
+                await saveToCloud();
+            }
+            
             statusDiv.className = "sync-status success";
-            statusDiv.innerHTML = "✅ Данные загружены из облака";
+            statusDiv.innerHTML = "✅ Данные синхронизированы";
             setTimeout(() => {
-                if (statusDiv.innerHTML === "✅ Данные загружены из облака") {
+                if (statusDiv.innerHTML === "✅ Данные синхронизированы") {
                     statusDiv.innerHTML = "☁️ Облачное хранилище";
                 }
             }, 2000);
@@ -580,25 +589,17 @@ async function loadFromCloud() {
                 initDefaultApril();
                 await saveToCloud();
             }
-            statusDiv.className = "sync-status success";
-            statusDiv.innerHTML = "✅ Календарь создан";
-            setTimeout(() => {
-                if (statusDiv.innerHTML === "✅ Календарь создан") {
-                    statusDiv.innerHTML = "☁️ Облачное хранилище";
-                }
-            }, 2000);
         }
         
         renderCalendar();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
         statusDiv.className = "sync-status error";
-        statusDiv.innerHTML = "❌ Ошибка подключения к облаку";
+        statusDiv.innerHTML = "❌ Ошибка подключения";
         
         if (Object.keys(scheduleData).length === 0) {
             initDefaultApril();
             renderCalendar();
-            statusDiv.innerHTML = "⚠️ Работа в локальном режиме";
         }
     } finally {
         isLoading = false;
@@ -606,17 +607,24 @@ async function loadFromCloud() {
     }
 }
 
-// ========== СОХРАНЕНИЕ В ОБЛАКО ==========
+// Сохранение в облако с очередью
 async function saveToCloud() {
-    if (isSaving) return false;
-    isSaving = true;
+    // Добавляем в очередь
+    syncQueue.push(Date.now());
+    
+    if (isSyncing) return false;
+    
+    isSyncing = true;
     
     const statusDiv = document.getElementById("syncStatus");
-    const originalText = statusDiv.innerHTML;
-    statusDiv.className = "sync-status loading";
-    statusDiv.innerHTML = "💾 Сохранение...";
     
     try {
+        // Небольшая задержка для сбора всех изменений
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        statusDiv.className = "sync-status loading";
+        statusDiv.innerHTML = "💾 Синхронизация...";
+        
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
             headers: { 
@@ -632,12 +640,15 @@ async function saveToCloud() {
         
         if (result.status === "success" || result.status === "ok") {
             statusDiv.className = "sync-status success";
-            statusDiv.innerHTML = "✅ Сохранено";
+            statusDiv.innerHTML = "✅ Синхронизировано";
             setTimeout(() => {
-                if (statusDiv.innerHTML === "✅ Сохранено") {
+                if (statusDiv.innerHTML === "✅ Синхронизировано") {
                     statusDiv.innerHTML = "☁️ Облачное хранилище";
                 }
             }, 1500);
+            
+            // Очищаем очередь
+            syncQueue = [];
             return true;
         } else {
             throw new Error(result.error || "Unknown error");
@@ -645,15 +656,20 @@ async function saveToCloud() {
     } catch (error) {
         console.error("Ошибка сохранения:", error);
         statusDiv.className = "sync-status error";
-        statusDiv.innerHTML = "⚠️ Ошибка сохранения";
+        statusDiv.innerHTML = "⚠️ Ошибка синхронизации";
         setTimeout(() => {
-            if (statusDiv.innerHTML === "⚠️ Ошибка сохранения") {
+            if (statusDiv.innerHTML === "⚠️ Ошибка синхронизации") {
                 statusDiv.innerHTML = "☁️ Облачное хранилище";
             }
         }, 3000);
         return false;
     } finally {
-        isSaving = false;
+        isSyncing = false;
+        
+        // Если в очереди есть новые запросы, запускаем синхронизацию снова
+        if (syncQueue.length > 0) {
+            saveToCloud();
+        }
     }
 }
 
@@ -788,7 +804,6 @@ function openEditModal(day) {
         if (newType === "work" && !newShift) newShift = "02:00–08:00";
         const newProject = document.getElementById("editProjectInput").value.trim() || DEFAULT_PROJECT;
         
-        // Валидация времени смены
         if (newType === "work" && !/^\d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}$/.test(newShift)) {
             if (!confirm("Формат времени нестандартный. Продолжить?")) return;
         }
@@ -868,22 +883,10 @@ async function importSchedule(rawText) {
         return false;
     }
     
-    // Проверка на дубликаты в импорте
-    const duplicates = [];
-    const seenKeys = new Set();
-    for (const key of Object.keys(updates)) {
-        if (seenKeys.has(key)) duplicates.push(key);
-        seenKeys.add(key);
-    }
-    
-    if (duplicates.length > 0) {
-        alert(`⚠️ Найдены дубликаты дат: ${duplicates.join(', ')}. Будут использованы последние значения.`);
-    }
-    
     Object.assign(scheduleData, updates);
     renderCalendar();
     await saveToCloud();
-    alert(`✅ Импортировано ${Object.keys(updates).length} дней\n${errors.length > 0 ? `⚠️ Пропущено: ${errors.length}` : ''}`);
+    alert(`✅ Импортировано ${Object.keys(updates).length} дней`);
     return true;
 }
 
@@ -971,7 +974,6 @@ async function exportPDF() {
         
         let heightLeft = imgHeight;
         let position = 0;
-        let page = 1;
         
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= (pdf.internal.pageSize.getHeight());
@@ -981,7 +983,6 @@ async function exportPDF() {
             pdf.addPage();
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
             heightLeft -= (pdf.internal.pageSize.getHeight());
-            page++;
         }
         
         pdf.save(`calendar_${currentYear}_${String(currentMonth+1).padStart(2,'0')}.pdf`);
@@ -997,14 +998,14 @@ async function exportPDF() {
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 async function initApp() {
     // Привязка событий
-    document.getElementById("loginBtn").onclick = async () => {
+    document.getElementById("loginBtn").onclick = () => {
         const password = document.getElementById("passwordInput").value;
-        const inputHash = await sha256(password);
         
-        if (inputHash === VALID_PASSWORD_HASH) {
+        // ПРОСТОЕ СРАВНЕНИЕ ПАРОЛЯ
+        if (password === VALID_PASSWORD) {
             saveAuthToStorage();
             showMainApp();
-            await loadFromCloud();
+            loadFromCloud();
         } else {
             document.getElementById("loginError").textContent = "❌ Неверный пароль";
         }
