@@ -132,9 +132,58 @@ button:active {
     background: #1e5940;
 }
 
-/* Импорт график — без меню, просто невидимый элемент */
-.hidden-import {
+/* Модальное окно импорта */
+.import-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
     display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.import-modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 32px;
+    max-width: 550px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 45px rgba(0,0,0,0.25);
+}
+
+.import-modal-content h3 {
+    margin-top: 0;
+    font-size: 1.35rem;
+    margin-bottom: 16px;
+}
+
+.import-modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    resize: vertical;
+    margin: 10px 0;
+}
+
+.import-modal-content .info {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 8px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
 }
 
 .weekday-header {
@@ -217,7 +266,7 @@ button:active {
     overflow: hidden;
 }
 
-.modal {
+.edit-modal {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.6);
@@ -229,7 +278,7 @@ button:active {
     padding: 16px;
 }
 
-.modal-content {
+.edit-modal-content {
     background: white;
     padding: 20px;
     border-radius: 32px;
@@ -238,13 +287,13 @@ button:active {
     box-shadow: 0 25px 45px rgba(0,0,0,0.25);
 }
 
-.modal-content h3 {
+.edit-modal-content h3 {
     margin-top: 0;
     font-size: 1.35rem;
     margin-bottom: 16px;
 }
 
-.modal-content select, .modal-content input {
+.edit-modal-content select, .edit-modal-content input {
     width: 100%;
     padding: 12px 14px;
     margin: 10px 0;
@@ -252,17 +301,6 @@ button:active {
     border: 1px solid #cbd5e1;
     font-size: 0.9rem;
     background: white;
-}
-
-.modal-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 16px;
-}
-
-.modal-buttons button {
-    padding: 8px 20px;
 }
 
 .empty-cell {
@@ -315,17 +353,11 @@ button:active {
         <div class="btn-group">
             <button onclick="exportPNG()">📸 PNG</button>
             <button onclick="exportPDF()">📄 PDF</button>
-            <!-- Кнопка импорта графика (скрытая, но функциональная) -->
-            <button id="hiddenImportBtn" class="btn-import" style="background: #2b6e4f;">📥 Импорт графика</button>
+            <button id="showImportBtn" class="btn-import">📥 Импорт графика</button>
         </div>
         <div class="btn-group">
             <button id="resetToDefaultBtn">⟳ Сброс</button>
         </div>
-    </div>
-
-    <!-- Скрытый элемент для вставки расписания (без меню, только по требованию) -->
-    <div id="importPanel" class="hidden-import">
-        <textarea id="scheduleRawText" rows="3" placeholder="Вставьте расписание..."></textarea>
     </div>
 
     <div class="weekday-header">
@@ -334,8 +366,34 @@ button:active {
     <div class="calendar" id="calendar"></div>
 </div>
 
-<div class="modal" id="editModal">
-    <div class="modal-content" id="editModalContent"></div>
+<!-- Модальное окно редактирования -->
+<div class="edit-modal" id="editModal">
+    <div class="edit-modal-content" id="editModalContent"></div>
+</div>
+
+<!-- Модальное окно импорта -->
+<div class="import-modal-overlay" id="importModal">
+    <div class="import-modal-content">
+        <h3>📥 Импорт расписания</h3>
+        <p style="font-size: 0.85rem; color: #475569;">Вставьте данные в формате:</p>
+        <textarea id="importText" rows="10" placeholder="Пример:
+01.04.2026
+02:00 - 08:00
+6
+Лемана ПРО_B2C_голос_вход
+02.04.2026
+Выходной
+Лемана ПРО_B2C_голос_вход
+03.04.2026
+Отпуск
+Лемана ПРО_B2C_голос_вход"></textarea>
+        <div class="info">✅ Поддерживаются форматы: "02:00 - 08:00", "Выходной", "Отпуск"<br>
+        📅 Импортируются даты только для выбранного месяца: <strong id="importMonthLabel">Апрель 2026</strong></div>
+        <div class="modal-buttons">
+            <button id="applyImportBtn" style="background: #2b6e4f;">📌 Применить</button>
+            <button id="closeImportBtn" style="background: #64748b;">Отмена</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -547,30 +605,43 @@ function closeEditModal() {
     document.getElementById("editModal").style.display = "none";
 }
 
-// ========== ПАРСИНГ ГРАФИКА (только данные) ==========
+// ========== ПАРСИНГ ГРАФИКА ==========
 function parseScheduleFromText(rawText, targetYear, targetMonth) {
     const lines = rawText.split(/\r?\n/);
     const updates = new Map();
+    
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
         if (line === "") continue;
-        const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})/);
+        
+        // Ищем дату в формате DD.MM.YYYY
+        const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
         if (!dateMatch) continue;
+        
         let day = parseInt(dateMatch[1], 10);
         let month = parseInt(dateMatch[2], 10);
         let year = parseInt(dateMatch[3], 10);
-        if (year < 100) year = 2000 + year;
-        if (year !== targetYear || month !== (targetMonth + 1)) continue;
         
+        // Проверяем, соответствует ли дата выбранному месяцу
+        if (year !== targetYear || month !== (targetMonth + 1)) {
+            continue; // Пропускаем даты не текущего месяца
+        }
+        
+        // Переходим к следующей строке (описание: время/выходной/отпуск)
         i++;
         while (i < lines.length && lines[i].trim() === "") i++;
         if (i >= lines.length) break;
+        
         let shiftDesc = lines[i].trim();
         i++;
+        
+        // Пропускаем строку с количеством часов (цифра)
         while (i < lines.length && lines[i].trim() === "") i++;
         if (i < lines.length && /^\d+$/.test(lines[i].trim())) {
             i++;
         }
+        
+        // Читаем проект (следующая непустая строка)
         while (i < lines.length && lines[i].trim() === "") i++;
         let projectName = DEFAULT_PROJECT;
         if (i < lines.length && lines[i].trim() !== "" && !lines[i].trim().match(/^\d{1,2}\.\d{2}\.\d{4}/)) {
@@ -578,9 +649,11 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
             i++;
         }
         
+        // Определяем тип дня
         let type = "work";
         let shiftText = "";
         const lowerDesc = shiftDesc.toLowerCase();
+        
         if (lowerDesc.includes("выходной")) {
             type = "off";
             shiftText = "";
@@ -592,24 +665,21 @@ function parseScheduleFromText(rawText, targetYear, targetMonth) {
             shiftText = shiftDesc;
             if (!shiftText.match(/\d/)) shiftText = "02:00–08:00";
         }
-        const key = getDateKey(year, month-1, day);
+        
+        const key = getDateKey(year, month - 1, day);
         updates.set(key, { type, shiftText, project: projectName || DEFAULT_PROJECT });
     }
+    
     return updates;
 }
 
-// Импорт графика через всплывающий prompt (без лишнего меню)
-function importScheduleViaPrompt() {
-    const rawText = prompt("📋 Вставьте расписание в формате:\n\n01.04.2026\n02:00 - 08:00\n6\nЛемана ПРО_B2C_голос_вход\n\n(можно скопировать целиком)");
-    if (!rawText || rawText.trim() === "") {
-        alert("Импорт отменён");
-        return;
-    }
-    
+// Импорт для текущего выбранного месяца
+function importScheduleForCurrentMonth(rawText) {
     const parsed = parseScheduleFromText(rawText, currentYear, currentMonth);
+    
     if (parsed.size === 0) {
-        alert("❌ Не найдено подходящих дат для текущего месяца.\nПроверьте формат: ДД.ММ.ГГГГ");
-        return;
+        alert(`❌ Не найдено подходящих дат для ${currentMonth+1}.${currentYear}\n\nПроверьте формат: ДД.ММ.ГГГГ\nПример: 01.${String(currentMonth+1).padStart(2,'0')}.${currentYear}`);
+        return false;
     }
     
     for (let [key, val] of parsed.entries()) {
@@ -617,7 +687,8 @@ function importScheduleViaPrompt() {
     }
     saveToLocalStorage();
     renderCalendar();
-    alert(`✅ Импорт графика завершён!\nОбновлено ${parsed.size} дней (${currentMonth+1}.${currentYear})`);
+    alert(`✅ Импорт завершён!\nОбновлено ${parsed.size} дней (${currentMonth+1}.${currentYear})`);
+    return true;
 }
 
 function resetCurrentMonthToDefault() {
@@ -685,17 +756,42 @@ if (!loaded || Object.keys(scheduleData).length === 0) {
     saveToLocalStorage();
 }
 
-// Обработчики (без лишних панелей)
-document.getElementById("hiddenImportBtn").onclick = () => {
-    importScheduleViaPrompt();
+// Модальное окно импорта
+const importModal = document.getElementById("importModal");
+const importTextarea = document.getElementById("importText");
+const importMonthLabel = document.getElementById("importMonthLabel");
+
+function openImportModal() {
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    importMonthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    importModal.style.display = "flex";
+}
+
+function closeImportModal() {
+    importModal.style.display = "none";
+    importTextarea.value = "";
+}
+
+// Обработчики
+document.getElementById("showImportBtn").onclick = openImportModal;
+document.getElementById("closeImportBtn").onclick = closeImportModal;
+document.getElementById("applyImportBtn").onclick = () => {
+    const rawText = importTextarea.value;
+    if (!rawText.trim()) {
+        alert("Вставьте текст с расписанием");
+        return;
+    }
+    importScheduleForCurrentMonth(rawText);
+    closeImportModal();
 };
 document.getElementById("resetToDefaultBtn").onclick = () => resetCurrentMonthToDefault();
 document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
 document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
 
 window.onclick = (e) => {
-    const modalElem = document.getElementById("editModal");
-    if (e.target === modalElem) closeEditModal();
+    const editModal = document.getElementById("editModal");
+    if (e.target === editModal) closeEditModal();
+    if (e.target === importModal) closeImportModal();
 };
 
 renderCalendar();
